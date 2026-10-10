@@ -1339,6 +1339,31 @@ export function initAudioBridge(): void {
             return false;
         }
     });
+    // Backing-track pitch transpose in semitones (fractional = cents), tempo
+    // unchanged — for playing along on a detuned guitar or a song converted to
+    // another tuning. Same contract as setBackingSpeed: feature-detected
+    // (false on a downlevel addon), validated here so a rejected value reports
+    // false instead of a silent engine-side no-op, never throws over IPC. The
+    // engine clamps to ±12 and rounds to whole cents; read the applied value
+    // back with getBackingPitch.
+    ipcMain.handle('audio:setBackingPitch', (_event, semitones: number) => {
+        if (!audio || typeof audio.setBackingPitch !== 'function') return false;
+        if (typeof semitones !== 'number' || !Number.isFinite(semitones)) return false;
+        try {
+            audio.setBackingPitch(semitones);
+            return true;
+        } catch (e: unknown) {
+            console.warn(`[audio] setBackingPitch failed: ${e instanceof Error ? e.message : String(e)}`);
+            return false;
+        }
+    });
+    ipcMain.handle('audio:getBackingPitch', () =>
+        (typeof audio?.getBackingPitch === 'function' ? audio.getBackingPitch() : 0) ?? 0);
+    // Stretcher latency (ms) the engine already subtracts from
+    // getBackingPosition — informational (e.g. for a latency readout or to
+    // align other audio against the backing). 0 when bypassed / downlevel.
+    ipcMain.handle('audio:getBackingLatencyMs', () =>
+        (typeof audio?.getBackingLatencyMs === 'function' ? audio.getBackingLatencyMs() : 0) ?? 0);
 
     // ── Presets ────────────────────────────────────────────────────────────
 

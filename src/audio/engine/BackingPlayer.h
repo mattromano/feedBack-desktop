@@ -3,10 +3,11 @@
 // BackingPlayer — the backing-track transport (TLC plan phase 3 / §2.4).
 // Moved verbatim from AudioEngine: JUCE AudioFormatReaderSource →
 // AudioTransportSource buffered by a TimeSliceThread read-ahead → optional
-// signalsmith-stretch phase vocoder for speed change (1× bypass path), the
+// signalsmith-stretch phase vocoder for speed change and pitch transpose
+// (bypassed at 1× with no transpose), the
 // per-song BackingLeveler loudness normalizer, and the playhead caches.
 //
-// Boundary: control-thread lifecycle (load/start/stop/seek/setSpeed) and
+// Boundary: control-thread lifecycle (load/start/stop/seek/setSpeed/setPitch) and
 // non-blocking cached getters live here; the RT mix POLICY (try-lock, RMS
 // metering, volume fader, stream-submix capture) stays in the engine's
 // output callbacks, which use the primitives getLock() / readyLocked() /
@@ -14,6 +15,7 @@
 // before. Both callbacks hold the try-lock through their stream publish so
 // renderBuffer() is never read while prepare() can resize it.
 
+#include "BackingStretchMath.h"
 #include "EngineState.h"
 #include "../BackingLeveler.h"
 #include "signalsmith-stretch.h" // resolved via SS_STRETCH_DIR include path
@@ -30,8 +32,9 @@ class BackingPlayer
 {
 public:
     static constexpr double kMaxSpeed = 4.0;
-    // |rate - 1| below this uses the direct transport path (no phase vocoder).
-    static constexpr double kSpeedBypassEpsilon = 1.0e-4;
+    // |rate - 1| below this uses the direct transport path (no phase vocoder)
+    // unless a pitch transpose is set (see backing::stretchEngaged).
+    static constexpr double kSpeedBypassEpsilon = backing::kSpeedBypassEpsilon;
 
     explicit BackingPlayer(EngineState& engineState) : state(engineState)
     {
@@ -45,12 +48,26 @@ public:
     void start();
     void stop();
     void setSpeed(double speed);
+    // Transpose the backing track by `semitones` (clamped to
+    // ±backing::kMaxPitchSemitones, rounded to whole cents) without changing
+    // its tempo — e.g. -1.0 to play along on a guitar tuned down a half step.
+    // Non-finite input is ignored. 0 disengages the stretcher (at 1× speed).
+    // Lock-free like setSpeed; persists across seeks and song loads.
+    void setPitch(double semitones);
 
     // Non-blocking reads — do not acquire the lock, never block the audio
     // callback.
     bool isPlaying() const { return playing.load(); }
     double getPosition() const { return cachedPosition.load(); }
     double getDuration() const { return cachedDuration.load(); }
+    // Last requested (sanitized) transpose — what setPitch was last given,
+    // even if the audio thread has not adopted it yet.
+    double getPitch() const { return pendingPitch.load(std::memory_order_relaxed); }
+    // Stretcher latency compensation in ms (source time) for the requested
+    // speed/pitch: how far getPosition() is held behind the frames already
+    // read from the file so the reported playhead matches what is heard.
+    // 0 on the bypass path (1×, no transpose) or before a device is running.
+    double getLatencyMs() const;
 
     // Re-prepare the transport + stretcher + buffers at a (new) device format.
     // Call from the about-to-start hook that owns backing playback (duplex:
@@ -66,7 +83,7 @@ public:
     //   }
     juce::CriticalSection& getLock() { return lock; }
     bool readyLocked() const { return transport != nullptr && playing.load(); }
-    // Renders one block (1× bypass or phase-vocoder stretch) into the render
+    // Renders one block (bypass or phase-vocoder stretch) into the render
     // buffer, advances heard/cached playheads, runs the loudness leveler, and
     // clears `playing` at EOF. Returns output frames written
     // (== jmin(numSamples, render-buffer cap)). Precondition: caller holds
@@ -91,6 +108,9 @@ private:
     signalsmith::stretch::SignalsmithStretch<float> stretch;
     juce::AudioBuffer<float> inputBuffer;  // pulled from transport at device rate
     juce::AudioBuffer<float> outputBuffer; // stretch output, mixed by the callbacks
+    // signalsmith latency halves (see backing::stretchLatencySourceSeconds),
+    // captured whenever the stretcher is (re)configured.
+    std::atomic<int> stretchInputLatencySamples{0};
     std::atomic<int> stretchLatencySamples{0};
     std::atomic<bool> playing{false};
     std::atomic<double> cachedPosition{0.0};
@@ -98,7 +118,7 @@ private:
     // Heard playhead: accumulates the source frames consumed each block, then
     // clamped to transport->getCurrentPosition() so a short read at EOF can't
     // push it past the real source point. cachedPosition is this value minus
-    // the stretcher output latency (zero on the 1× bypass path).
+    // the stretcher latency (zero on the bypass path).
     std::atomic<double> heardPositionSec{0.0};
     // Active playback rate. Mutated ONLY by the audio thread (in
     // renderBlockLocked), coupled with the stretcher reset, so a block is
@@ -111,6 +131,12 @@ private:
     // mid-slider-drag).
     std::atomic<double> pendingSpeed{1.0};
     std::atomic<bool> speedChangePending{false};
+    // Pitch transpose in semitones — same lock-free hand-off as speed:
+    // setPitch publishes pendingPitch + raises pitchChangePending; the audio
+    // thread adopts it into `pitch` and the stretcher's transpose.
+    std::atomic<double> pitch{0.0};
+    std::atomic<double> pendingPitch{0.0};
+    std::atomic<bool> pitchChangePending{false};
     // Per-song loudness normalizer (applied in renderBlockLocked, pre-fader).
     // Owned + driven by the audio thread.
     BackingLeveler leveler;
