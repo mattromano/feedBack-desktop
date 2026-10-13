@@ -1,6 +1,7 @@
 #include "SourceChain.h"
 #include "AudioSanitize.h"
 
+#include <algorithm>
 #include <cmath>
 
 // SourceChain — implementation. Method bodies are moved verbatim from
@@ -29,13 +30,17 @@ void SourceChain::prepare(double sr, int blockSize)
     // output > 0 case this storage stays unused.
     if ((int) inputCaptureScratch.size() < blockSize)
         inputCaptureScratch.assign((size_t) blockSize, 0.0f);
+    if ((int) dryTunerScratch.size() < blockSize)
+        dryTunerScratch.assign((size_t) blockSize, 0.0f);
 
     signalChain.prepare(sr, blockSize);
     pitchDetector.prepare(sr, blockSize);
     mlNoteDetector.prepare(sr, blockSize);
     noteVerifier.prepare(sr, blockSize);
     noiseGate.prepare(sr, blockSize);
+    dryTunerGate.prepare(sr, blockSize);
     tonePolish.prepare(sr);
+    livePitch.prepare(sr, blockSize);
 }
 
 void SourceChain::releaseResources()
@@ -158,6 +163,30 @@ void SourceChain::processBlock(const float* const* inputData, int numInputChanne
         monoSource = inputCaptureScratch.data();
     }
 
+    // Live pitch shift (the guitar "retune"). Runs before every consumer below so
+    // the ML/YIN detectors, the gate and the tone chain hear the shifted guitar.
+    // A dry copy is kept for the tuner's raw ring so the tuner still reads the
+    // real strings. When the shift is off this whole block is a no-op and the
+    // signal is bit-identical to before.
+    bool dryTunerValid = false;
+    if (monoSource != nullptr)
+    {
+        float* mono = effectiveOutputChannels > 0 ? buffer.getWritePointer(0)
+                                                  : inputCaptureScratch.data();
+        const bool shifting = livePitch.isEngaged() || livePitch.isActive();
+        if (shifting && (int) dryTunerScratch.size() >= numSamples)
+        {
+            std::copy(mono, mono + numSamples, dryTunerScratch.begin());
+            dryTunerValid = true;
+        }
+        // Bypassed, this only records history (keeps a re-engage click-free)
+        // and leaves the samples untouched.
+        livePitch.process(mono, numSamples);
+        if (shifting)
+            for (int ch = 1; ch < filledOutputChannels; ++ch)
+                buffer.copyFrom(ch, 0, buffer, 0, 0, numSamples);
+    }
+
     if (monoSource != nullptr)
     {
         // Feed the polyphonic ML detector the dry mono signal (pre-gate).
@@ -188,8 +217,20 @@ void SourceChain::processBlock(const float* const* inputData, int numInputChanne
         {
             // monoSource aliases buffer ch0, which the gate just processed in place.
             pitchDetector.pushSamples(monoSource, numSamples);
-            // Same post-gate samples feed the tuner's raw-audio ring.
-            pushRawAudioFrame(monoSource, numSamples);
+            // Same post-gate samples feed the tuner's raw-audio ring — except
+            // while the live pitch shift runs, when the tuner gets the dry
+            // strings through a mirror gate.
+            if (dryTunerValid)
+            {
+                float* dryPtr = dryTunerScratch.data();
+                juce::AudioBuffer<float> dryGateBuf(&dryPtr, 1, numSamples);
+                dryTunerGate.processBlock(dryGateBuf);
+                pushRawAudioFrame(dryPtr, numSamples);
+            }
+            else
+            {
+                pushRawAudioFrame(monoSource, numSamples);
+            }
         }
         else
         {
@@ -203,7 +244,17 @@ void SourceChain::processBlock(const float* const* inputData, int numInputChanne
             juce::AudioBuffer<float> scratchGate(&scratchPtr, 1, numSamples);
             noiseGate.processBlock(scratchGate);
             pitchDetector.pushSamples(scratchPtr, numSamples);
-            pushRawAudioFrame(scratchPtr, numSamples);
+            if (dryTunerValid)
+            {
+                float* dryPtr = dryTunerScratch.data();
+                juce::AudioBuffer<float> dryGateBuf(&dryPtr, 1, numSamples);
+                dryTunerGate.processBlock(dryGateBuf);
+                pushRawAudioFrame(dryPtr, numSamples);
+            }
+            else
+            {
+                pushRawAudioFrame(scratchPtr, numSamples);
+            }
         }
     }
 
@@ -435,8 +486,23 @@ PitchDetector::Detection SourceChain::getRawPitchDetection() const
     if (! audioRunning.load(std::memory_order_relaxed))
         return {};
 
-    // Always the raw YIN result — never the ML override.
-    return pitchDetector.getLatestDetection();
+    // Always the raw YIN result — never the ML override. YIN hears the shifted
+    // guitar, so undo the live pitch ratio to report the real string pitch.
+    auto det = pitchDetector.getLatestDetection();
+    const float ratio = livePitch.getCurrentRatio();
+    if (det.frequency > 0.0f && ratio > 0.0f && std::abs(ratio - 1.0f) > 1.0e-6f)
+    {
+        static const char* names[] = { "C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B" };
+        const float ref = pitchDetector.getTuningReference();
+        det.frequency /= ratio;
+        const float exact = 69.0f + 12.0f * std::log2(det.frequency / ref);
+        det.midiNote = (int) std::round(exact);
+        det.cents = 100.0f * (exact - (float) det.midiNote);
+        det.noteName = (det.midiNote >= 0 && det.midiNote <= 127)
+            ? juce::String(names[det.midiNote % 12]) + juce::String(det.midiNote / 12 - 1)
+            : juce::String("?");
+    }
+    return det;
 }
 
 ChordScorer::Result SourceChain::scoreChordWithMl(const ChordScorer::Request& req) const

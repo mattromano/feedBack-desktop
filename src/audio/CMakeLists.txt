@@ -5,6 +5,7 @@ set(AUDIO_SOURCES
     NodeAddon.cpp
     NoiseGate.cpp
     TonePolish.cpp
+    LivePitchShifter.cpp
     AudioEngine.cpp
     SourceChain.cpp
     SignalChain.cpp

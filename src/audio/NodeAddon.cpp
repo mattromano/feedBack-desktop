@@ -449,6 +449,15 @@ static Napi::Value GetDeviceMetrics(const Napi::CallbackInfo& info)
     obj.Set("outputUnderflowCount", static_cast<double>(m.outputUnderflowCount));
     obj.Set("outputRingFillFrames", m.outputRingFillFrames);
     obj.Set("outputRingCapacityFrames", m.outputRingCapacityFrames);
+    // Live pitch shift status (lets the renderer detect native support and show
+    // the real added latency).
+    auto lp = Napi::Object::New(env);
+    lp.Set("supported", true);
+    lp.Set("cents", liveEngine->getLivePitchCents());
+    lp.Set("windowMs", liveEngine->getLivePitchWindowMs());
+    lp.Set("ratio", liveEngine->getLivePitchRatio());
+    lp.Set("latencyMs", liveEngine->getLivePitchLatencyMs());
+    obj.Set("livePitch", lp);
     return obj;
 }
 
@@ -669,6 +678,27 @@ static Napi::Value SetTonePolish(const Napi::CallbackInfo& info)
         return env.Undefined();
 
     auto o = info[0].As<Napi::Object>();
+
+    // Live pitch shift rides on this call so the installed app's IPC bridge
+    // (which forwards the payload untouched) needs no change:
+    //   { pitch: { semitones, cents, windowMs } }
+    // A pitch payload never touches Tone Polish.
+    if (o.Has("pitch"))
+    {
+        auto pv = o.Get("pitch");
+        if (! pv.IsObject())
+            return env.Undefined();
+        auto p = pv.As<Napi::Object>();
+        auto num = [&p](const char* key, double fallback) {
+            if (! p.Has(key)) return fallback;
+            auto v = p.Get(key);
+            return v.IsNumber() ? v.As<Napi::Number>().DoubleValue() : fallback;
+        };
+        const double cents = num("semitones", 0.0) * 100.0 + num("cents", 0.0);
+        const double windowMs = num("windowMs", liveEngine->getLivePitchWindowMs());
+        liveEngine->setLivePitch((float) cents, (float) windowMs);
+        return env.Undefined();
+    }
 
     bool enabled = true;
     if (o.Has("enabled"))
