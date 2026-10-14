@@ -80,6 +80,17 @@ bool shouldSandbox(const juce::PluginDescription& desc)
 
     const auto basename = path.getFileNameWithoutExtension();
 
+    // Rig Builder's bundled Rocksmith pedal set (<plugins>/nam_rig_builder/vst/*.vst3) also loads
+    // in-process: through the sandbox a plugin exposes no parameters, so the song's knob settings
+    // could never be applied, and each pedal would cost an IPC round trip per block.
+    if (path.getFullPathName().replaceCharacter ('\\', '/')
+            .containsIgnoreCase ("/nam_rig_builder/vst/"))
+    {
+        VST_TRACE("shouldSandbox: %s — Rig Builder bundled pedal, in-process",
+                  desc.fileOrIdentifier.toRawUTF8());
+        return false;
+    }
+
     // Trusted open-source effects load in-process (no per-block IPC).
     for (auto& needle : kTrustedInProcessFilenames)
     {
