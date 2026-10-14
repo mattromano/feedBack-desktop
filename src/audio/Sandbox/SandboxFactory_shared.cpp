@@ -30,6 +30,22 @@ const juce::StringArray kDefaultNeedsSandboxFilenames = {
     "AmpliTube",
 };
 
+// Trusted in-process plugins (custom build): small, well-tested open-source
+// effects used as Rocksmith pedal stand-ins. The sandbox costs one cross-process
+// round trip per block per plugin, which with a 4-5 pedal chain is enough to
+// force a larger buffer; these run in-process at native cost instead. A plugin
+// that crashes still lands on the runtime crash blocklist below and is sandboxed
+// from the next run on.
+const juce::StringArray kTrustedInProcessFilenames = {
+    "Airwindows",          // Airwindows Consolidated (MIT)
+    "BYOD",                // ChowDSP Build Your Own Distortion
+    "ChowPhaser",
+    "CHOWTapeModel",
+    "ChowTapeModel",
+    "Dragonfly",           // Dragonfly Hall/Room/Plate/Early Reflections
+    "Surge XT Effects",
+};
+
 // Runtime crash blocklist: full plugin paths that crashed the app on a previous
 // run, supplied by the renderer's VST crash guard via setCrashedPlugins().
 std::mutex g_crashedPluginsMutex;
@@ -62,8 +78,20 @@ bool shouldSandbox(const juce::PluginDescription& desc)
         }
     }
 
-    // Pre-seed filename match — diagnostic tagging only.
     const auto basename = path.getFileNameWithoutExtension();
+
+    // Trusted open-source effects load in-process (no per-block IPC).
+    for (auto& needle : kTrustedInProcessFilenames)
+    {
+        if (basename.startsWithIgnoreCase(needle))
+        {
+            VST_TRACE("shouldSandbox: %s — trusted in-process ('%s')",
+                      desc.fileOrIdentifier.toRawUTF8(), needle.toRawUTF8());
+            return false;
+        }
+    }
+
+    // Pre-seed filename match — diagnostic tagging only.
     for (auto& needle : kDefaultNeedsSandboxFilenames)
     {
         if (basename.startsWithIgnoreCase(needle))
