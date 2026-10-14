@@ -106,12 +106,12 @@ clone_slopsmith() {
 	# Build workflow's slopsmith_ref input). Defaults to main so local
 	# builds and the push/tag CI paths behave exactly as before.
 	# --branch accepts either a branch or a tag, both shallow-cloneable.
-	local slopsmith_ref="${SLOPSMITH_REF:-main}"
+	local slopsmith_ref="${SLOPSMITH_REF:-custom}"
 	# SLOPSMITH_REPO overrides the core repo (default got-feedback/feedback),
 	# mirroring SLOPSMITH_REF. Lets a contributor without push access to the
 	# core repo bundle a branch pushed to their own fork for a test build:
 	#   SLOPSMITH_REPO=me/feedBack SLOPSMITH_REF=my-branch
-	local slopsmith_repo="${SLOPSMITH_REPO:-got-feedback/feedback}"
+	local slopsmith_repo="${SLOPSMITH_REPO:-mattromano/feedBack}"
 	local _auth=""
 	[[ -n "${GH_CLONE_TOKEN:-}" ]] && _auth="x-access-token:${GH_CLONE_TOKEN}@"
 	echo "Cloning Slopsmith repository (${slopsmith_repo} ref: ${slopsmith_ref})..."
@@ -133,7 +133,7 @@ clone_slopsmith() {
 	local plugins=(
 		# Bundled plugins — all under the got-feedback org after the migration.
 		got-feedback/feedback-plugin-bongocat
-		got-feedback/feedback-plugin-drums
+		mattromano/feedBack-plugin-drums@custom:drums
 		got-feedback/feedback-plugin-editor
 		got-feedback/feedback-plugin-flappy-bend
 		got-feedback/feedback-plugin-fretboard
@@ -144,10 +144,10 @@ clone_slopsmith() {
 		got-feedback/feedback-plugin-lyrics-karaoke
 		got-feedback/feedback-plugin-metronome
 		got-feedback/feedback-plugin-midi
-		got-feedback/feedback-plugin-multiplayer
+		mattromano/feedBack-plugin-multiplayer@custom:multiplayer
 		got-feedback/feedback-plugin-musicxml-import
-		got-feedback/feedback-plugin-nam-tone
-		got-feedback/feedback-plugin-notedetect
+		mattromano/feedBack-plugin-nam-tone@custom:nam_tone
+		mattromano/feedBack-plugin-notedetect@custom:notedetect
 		got-feedback/feedback-plugin-piano
 		got-feedback/feedback-plugin-practice
 		got-feedback/feedback-plugin-sectionmap
@@ -179,6 +179,12 @@ clone_slopsmith() {
 		# nimuart/cameradirector_feedback#3). Repo isn't under the
 		# feedback-plugin-* prefix, so give an explicit dirname matching the id.
 		got-feedback/cameradirector_feedback:camera_director
+		# mattromano build: drums, multiplayer, nam-tone and notedetect above
+		# come from our forks' `custom` branch (upstream main + our open PRs);
+		# these two are our own plugins. Personal plugins ship in-tree in the
+		# core fork (mattromano/feedBack@custom, plugins/).
+		mattromano/feedBack-plugin-autotune:autotune
+		mattromano/feedBack-plugin-scorecard:scorecard
 	)
 
 	local total=0
