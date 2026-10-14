@@ -471,6 +471,14 @@ const feedBackDesktopApi = {
         getBackingDuration: (): Promise<number> => ipcRenderer.invoke('audio:getBackingDuration'),
         isBackingPlaying: (): Promise<boolean> => ipcRenderer.invoke('audio:isBackingPlaying'),
         setBackingSpeed: (speed: number): Promise<boolean> => ipcRenderer.invoke('audio:setBackingSpeed', speed),
+        // Transpose the backing track by `semitones` (fractional = cents,
+        // clamped to ±12) without changing tempo; resolves false when
+        // rejected or unsupported by the native addon.
+        setBackingPitch: (semitones: number): Promise<boolean> =>
+            ipcRenderer.invoke('audio:setBackingPitch', semitones),
+        getBackingPitch: (): Promise<number> => ipcRenderer.invoke('audio:getBackingPitch'),
+        // Stretcher latency already compensated in getBackingPosition (ms).
+        getBackingLatencyMs: (): Promise<number> => ipcRenderer.invoke('audio:getBackingLatencyMs'),
 
         // Presets
         savePreset: () => ipcRenderer.invoke('audio:savePreset'),
