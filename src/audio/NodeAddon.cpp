@@ -49,9 +49,7 @@ using slopsmith::addon::ClearStreamOutput;
 using slopsmith::addon::DetectNotes;
 using slopsmith::addon::EnableFileLogging;
 using slopsmith::addon::GetBackingDuration;
-using slopsmith::addon::GetBackingLatencyMs;
 using slopsmith::addon::GetBackingLevel;
-using slopsmith::addon::GetBackingPitch;
 using slopsmith::addon::GetBackingPosition;
 using slopsmith::addon::GetBufferSizes;
 using slopsmith::addon::GetChainGeneration;
@@ -96,7 +94,6 @@ using slopsmith::addon::ScoreChord;
 using slopsmith::addon::ScoreSourceChord;
 using slopsmith::addon::SeekBacking;
 using slopsmith::addon::SendMidiToSlot;
-using slopsmith::addon::SetBackingPitch;
 using slopsmith::addon::SetBackingSpeed;
 using slopsmith::addon::SetBranch;
 using slopsmith::addon::SetBranchSrc;
@@ -453,9 +450,6 @@ static Napi::Object InitModule(Napi::Env env, Napi::Object exports)
     exports.Set("getBackingDuration", Napi::Function::New(env, GetBackingDuration));
     exports.Set("isBackingPlaying", Napi::Function::New(env, IsBackingPlaying));
     exports.Set("setBackingSpeed", Napi::Function::New(env, SetBackingSpeed));
-    exports.Set("setBackingPitch", Napi::Function::New(env, SetBackingPitch));
-    exports.Set("getBackingPitch", Napi::Function::New(env, GetBackingPitch));
-    exports.Set("getBackingLatencyMs", Napi::Function::New(env, GetBackingLatencyMs));
 
     // Presets
     exports.Set("savePreset", Napi::Function::New(env, SavePreset));

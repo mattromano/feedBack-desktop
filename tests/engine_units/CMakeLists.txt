@@ -24,13 +24,3 @@ add_test(NAME renderer_bus COMMAND renderer_bus_test)
 add_executable(rate_match_test rate_match_test.cpp)
 target_compile_features(rate_match_test PRIVATE cxx_std_17)
 add_test(NAME rate_match COMMAND rate_match_test)
-
-# Backing stretcher units (pitch sanitize / bypass / latency math) plus an
-# end-to-end run of the real signalsmith-stretch, which is header-only and
-# JUCE-free. Same include layout as slopsmith_audio (src/audio/CMakeLists.txt).
-add_executable(backing_stretch_test backing_stretch_test.cpp)
-target_compile_features(backing_stretch_test PRIVATE cxx_std_17)
-target_include_directories(backing_stretch_test PRIVATE
-    "${CMAKE_CURRENT_SOURCE_DIR}/../../src/audio/third_party/signalsmith-stretch"
-    "${CMAKE_CURRENT_SOURCE_DIR}/../../src/audio/third_party")
-add_test(NAME backing_stretch COMMAND backing_stretch_test)

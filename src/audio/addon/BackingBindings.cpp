@@ -87,34 +87,5 @@ Napi::Value SetBackingSpeed(const Napi::CallbackInfo& info)
     return env.Undefined();
 }
 
-Napi::Value SetBackingPitch(const Napi::CallbackInfo& info)
-{
-    auto env = info.Env();
-    if (info.Length() < 1 || !info[0].IsNumber())
-    {
-        Napi::TypeError::New(env, "setBackingPitch(semitones) requires a number")
-            .ThrowAsJavaScriptException();
-        return env.Undefined();
-    }
-    // Non-finite values are ignored and the range is clamped engine-side
-    // (BackingPlayer::setPitch).
-    if (auto liveEngine = snapshotEngine())
-        liveEngine->setBackingPitch(info[0].As<Napi::Number>().DoubleValue());
-    return env.Undefined();
-}
-
-Napi::Value GetBackingPitch(const Napi::CallbackInfo& info)
-{
-    auto liveEngine = snapshotEngine();
-    double semitones = liveEngine ? liveEngine->getBackingPitch() : 0.0;
-    return Napi::Number::New(info.Env(), semitones);
-}
-
-Napi::Value GetBackingLatencyMs(const Napi::CallbackInfo& info)
-{
-    auto liveEngine = snapshotEngine();
-    double ms = liveEngine ? liveEngine->getBackingLatencyMs() : 0.0;
-    return Napi::Number::New(info.Env(), ms);
-}
 
 } // namespace slopsmith::addon

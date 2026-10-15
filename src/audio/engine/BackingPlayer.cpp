@@ -88,10 +88,6 @@ bool BackingPlayer::load(const juce::File& file)
 
         stretch.presetDefault(2, (float) sr);
         stretch.reset();
-        // presetDefault() leaves the transpose alone today, but re-assert the
-        // active pitch so a reconfigure can never silently drop it.
-        stretch.setTransposeSemitones((float) pitch.load(std::memory_order_relaxed));
-        stretchInputLatencySamples.store(stretch.inputLatency(), std::memory_order_relaxed);
         stretchLatencySamples.store(stretch.outputLatency(), std::memory_order_relaxed);
 
         inputBuffer.setSize(2, maxInputFrames, false, false, true);
@@ -192,45 +188,6 @@ void BackingPlayer::setSpeed(double newSpeed)
     speedChangePending.store(true, std::memory_order_release);
 }
 
-void BackingPlayer::setPitch(double semitones)
-{
-    double sanitized = 0.0;
-    if (!backing::sanitizePitchSemitones(semitones, sanitized))
-    {
-        return;
-    }
-
-    // Requests are already cent-quantized, so an exact compare is the
-    // dead-zone: repeated slider ticks inside the same cent coalesce here.
-    if (sanitized == pendingPitch.load(std::memory_order_relaxed))
-    {
-        return;
-    }
-
-    // Same lock-free hand-off as setSpeed (publish value, then release the
-    // flag); renderBlockLocked() applies it to the stretcher on the audio
-    // thread under the lock, so the control thread never contends with the
-    // RT tryLock while a pitch slider is dragged.
-    pendingPitch.store(sanitized, std::memory_order_relaxed);
-    pitchChangePending.store(true, std::memory_order_release);
-}
-
-double BackingPlayer::getLatencyMs() const
-{
-    // From the REQUESTED speed/pitch (what the next block will run with), so a
-    // caller that sets a transpose while paused gets the compensation it is
-    // about to see. Lock-free: atomics only.
-    const double rate = juce::jlimit(0.01, kMaxSpeed,
-                                     pendingSpeed.load(std::memory_order_relaxed));
-    const bool engaged = backing::stretchEngaged(
-        rate, pendingPitch.load(std::memory_order_relaxed));
-    return 1000.0 * backing::stretchLatencySourceSeconds(
-        engaged,
-        stretchInputLatencySamples.load(std::memory_order_relaxed),
-        stretchLatencySamples.load(std::memory_order_relaxed),
-        rate, state.currentSampleRate.load(std::memory_order_relaxed));
-}
-
 void BackingPlayer::prepare(double sr, int bs)
 {
     const juce::ScopedLock sl(lock);
@@ -243,10 +200,6 @@ void BackingPlayer::prepare(double sr, int bs)
         transport->prepareToPlay(maxInputFrames, sr);
         stretch.presetDefault(2, (float) sr);
         stretch.reset();
-        // presetDefault() leaves the transpose alone today, but re-assert the
-        // active pitch so a reconfigure can never silently drop it.
-        stretch.setTransposeSemitones((float) pitch.load(std::memory_order_relaxed));
-        stretchInputLatencySamples.store(stretch.inputLatency(), std::memory_order_relaxed);
         stretchLatencySamples.store(stretch.outputLatency(), std::memory_order_relaxed);
         inputBuffer.setSize(2, maxInputFrames, false, false, true);
         outputBuffer.setSize(2, bs, false, false, true);
@@ -255,12 +208,6 @@ void BackingPlayer::prepare(double sr, int bs)
 
 int BackingPlayer::renderBlockLocked(int numSamples)
 {
-    // Stretcher engagement BEFORE adopting any pending change, so a transition
-    // into / out of the stretch path can be detected below.
-    const bool wasEngaged = backing::stretchEngaged(
-        speed.load(std::memory_order_relaxed), pitch.load(std::memory_order_relaxed));
-    bool resetStretch = false;
-
     // Adopt any speed change requested since the last block (set lock-free by
     // setSpeed). Common (no-change) path is a plain acquire load — no locked
     // RMW, so the flag's cache line stays shared and isn't bounced to this
@@ -277,37 +224,12 @@ int BackingPlayer::renderBlockLocked(int numSamples)
         speed.store(juce::jlimit(0.01, kMaxSpeed,
                                  pendingSpeed.load(std::memory_order_relaxed)),
                     std::memory_order_relaxed);
-        resetStretch = true;
-    }
-
-    // Adopt a pending pitch change the same way. A transpose change alone does
-    // NOT reset the stretcher: signalsmith picks the new frequency multiplier
-    // up on its next analysis block, so dragging a pitch slider glides instead
-    // of re-priming (and briefly muting) the phase vocoder on every tick.
-    // setTransposeSemitones() is a pow + member stores — audio-thread safe.
-    if (pitchChangePending.load(std::memory_order_acquire))
-    {
-        pitchChangePending.exchange(false, std::memory_order_acquire);
-        const double semis = pendingPitch.load(std::memory_order_relaxed);
-        pitch.store(semis, std::memory_order_relaxed);
-        stretch.setTransposeSemitones((float) semis);
-    }
-
-    const double rate = juce::jlimit(0.01, kMaxSpeed, speed.load(std::memory_order_relaxed));
-    const bool engaged = backing::stretchEngaged(rate, pitch.load(std::memory_order_relaxed));
-
-    // A speed change, or entering / leaving the stretch path (e.g. the first
-    // non-zero transpose at 1×, which must not replay stale analysis state
-    // from an earlier stretched section of the song): reset the stretcher and
-    // re-anchor the heard position in this same block, so a block is never
-    // processed with stale stretch state. reset() only clears state (no
-    // allocation), so it's audio-thread safe.
-    if (resetStretch || engaged != wasEngaged)
-    {
         stretch.reset();
         heardPositionSec.store(transport->getCurrentPosition(),
                                std::memory_order_relaxed);
     }
+
+    const double rate = juce::jlimit(0.01, kMaxSpeed, speed.load(std::memory_order_relaxed));
 
     // Defensive clamp: the buffers are sized by prepare() from the device's
     // nominal block size, but a callback can deliver a larger numSamples on a
@@ -318,13 +240,13 @@ int BackingPlayer::renderBlockLocked(int numSamples)
     const int inCap  = inputBuffer.getNumSamples();
     const int outSamples = juce::jmin(numSamples, outCap);
     const double sr = state.currentSampleRate.load(std::memory_order_relaxed);
-    const bool bypassStretch = !engaged;
+    const bool bypassStretch = std::abs(rate - 1.0) < kSpeedBypassEpsilon;
 
     int sourceFramesPulled = 0;
 
     if (bypassStretch)
     {
-        // 1×, no transpose — direct transport read, no phase-vocoder path. (The transport
+        // 1× — direct transport read, no phase-vocoder path. (The transport
         // still sample-rate-converts the file to the device rate, so this is
         // "no time-stretch", not necessarily bit-perfect.)
         outputBuffer.clear(0, outSamples);
@@ -334,10 +256,8 @@ int BackingPlayer::renderBlockLocked(int numSamples)
     }
     else
     {
-        // Stretch path (speed and/or pitch) — pull only the source frames
-        // needed for this output block (output * rate), then stretch
-        // in-process to fill outSamples. At 1× with a transpose this is a
-        // 1:1 pull and the stretcher only shifts pitch.
+        // Slow/fast path — pull only the source frames needed for this output
+        // block (output * rate), then stretch in-process to fill outSamples.
         const int inputFrames = juce::jmin((int) std::ceil(outSamples * rate), inCap);
 
         inputBuffer.clear(0, inputFrames);
@@ -367,15 +287,11 @@ int BackingPlayer::renderBlockLocked(int numSamples)
         heard = juce::jmin(heard, transportPos);
         heardPositionSec.store(heard, std::memory_order_relaxed);
 
-        // Bypass reads straight from the transport — no phase-vocoder
-        // latency to compensate for. Only the stretch path adds latency: both
-        // the input half (analysis window centre) and the output half (scaled
-        // to source time by the rate). See stretchLatencySourceSeconds().
-        const double latencyInputSec = backing::stretchLatencySourceSeconds(
-            engaged,
-            stretchInputLatencySamples.load(std::memory_order_relaxed),
-            stretchLatencySamples.load(std::memory_order_relaxed),
-            rate, sr);
+        // Bypass reads straight from the transport — no phase-vocoder output
+        // latency to compensate for. Only the stretch path adds latency.
+        const double latencyInputSec = bypassStretch
+            ? 0.0
+            : (stretchLatencySamples.load(std::memory_order_relaxed) * rate) / sr;
         cachedPosition.store(juce::jmax(0.0, heard - latencyInputSec));
     }
     else

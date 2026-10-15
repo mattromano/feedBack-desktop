@@ -220,9 +220,6 @@ public:
         currentBackingLevel.store(0.0f);
     }
     void setBackingSpeed(double speed) { backing.setSpeed(speed); }
-    void setBackingPitch(double semitones) { backing.setPitch(semitones); }
-    double getBackingPitch() const { return backing.getPitch(); }
-    double getBackingLatencyMs() const { return backing.getLatencyMs(); }
     // Non-blocking reads — never acquire the backing lock / block the audio callback
     bool isBackingPlaying() const { return backing.isPlaying(); }
     double getBackingPosition() const { return backing.getPosition(); }
