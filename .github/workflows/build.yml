@@ -29,22 +29,23 @@ on:
         description: "Core repo to bundle. Defaults to our fork."
         required: false
         default: mattromano/feedBack
+      platforms:
+        description: "custom: which platforms to build. mac (default, Matt's machine) or all."
+        required: false
+        default: mac
+        type: choice
+        options: [mac, all]
 
 jobs:
   build:
     strategy:
       fail-fast: false
+      # custom: manual runs build the Mac only unless platforms=all; release tag
+      # pushes still build all three.
       matrix:
-        include:
-          - os: ubuntu-22.04
-            platform: linux
-            arch: x64
-          - os: macos-14
-            platform: mac
-            arch: arm64
-          - os: windows-latest
-            platform: win
-            arch: x64
+        include: ${{ fromJSON((github.event_name == 'push' || inputs.platforms == 'all')
+          && '[{"os":"ubuntu-22.04","platform":"linux","arch":"x64"},{"os":"macos-14","platform":"mac","arch":"arm64"},{"os":"windows-latest","platform":"win","arch":"x64"}]'
+          || '[{"os":"macos-14","platform":"mac","arch":"arm64"}]') }}
 
     runs-on: ${{ matrix.os }}
 
