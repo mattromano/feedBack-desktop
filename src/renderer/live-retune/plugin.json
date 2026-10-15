@@ -1,0 +1,8 @@
+{
+    "id": "live_retune",
+    "name": "Live Retune",
+    "version": "2.0.0",
+    "description": "Shift the pitch of the guitar you're playing by semitones and cents inside the native engine (no VST, ~10-15 ms). Note detection follows the shift; the tuner keeps reading your real strings. Desktop app only.",
+    "bundled": true,
+    "script": "screen.js"
+}

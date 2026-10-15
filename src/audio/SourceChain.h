@@ -2,6 +2,7 @@
 #include "InputRingReader.h"
 #include "NoiseGate.h"
 #include "TonePolish.h"
+#include "LivePitchShifter.h"
 #include "SignalChain.h"
 #include "GainSanitize.h"
 #include "PitchDetector.h"
@@ -68,6 +69,7 @@ public:
     {
         signalChain.prepare(sr, blockSize);
         noiseGate.prepare(sr, blockSize);
+        dryTunerGate.prepare(sr, blockSize);
         tonePolish.prepare(sr);
     }
     void releaseMonitorChain() { signalChain.releaseResources(); }
@@ -123,8 +125,26 @@ public:
     void setNoiseGate(bool enabled, float thresholdDb, float releaseMs, float depthDb)
     {
         noiseGate.setParameters(enabled, thresholdDb, releaseMs, depthDb);
+        dryTunerGate.setParameters(enabled, thresholdDb, releaseMs, depthDb);
     }
     void setTonePolishEnabled(bool enabled) { tonePolish.setEnabled(enabled); }
+
+    // Live pitch shift of the monitored guitar (see LivePitchShifter.h). Applied
+    // right after input gain, so note detection, the gate and the tone chain all
+    // hear the shifted guitar; the tuner's raw ring keeps the dry strings.
+    void setLivePitch(float cents, float windowMs)
+    {
+        livePitch.setWindowMs(windowMs);
+        livePitch.setShiftCents(cents);
+    }
+    float getLivePitchCents() const { return livePitch.getShiftCents(); }
+    float getLivePitchWindowMs() const { return livePitch.getWindowMs(); }
+    float getLivePitchRatio() const { return livePitch.getCurrentRatio(); }
+    double getLivePitchLatencyMs() const
+    {
+        const double sr = sampleRate.load(std::memory_order_relaxed);
+        return sr > 0.0 ? livePitch.getLatencySamples() * 1000.0 / sr : 0.0;
+    }
 
     // Sanitized (see GainSanitize.h) so NaN/Inf from the JS bridge can't
     // reach the audio thread via either the legacy or the indexed API.
@@ -218,6 +238,8 @@ private:
     MlNoteDetector mlNoteDetector;
     NoiseGate noiseGate;
     TonePolish tonePolish;
+    LivePitchShifter livePitch;
+    NoiseGate dryTunerGate;  // mirrors noiseGate's settings for the dry tuner feed
     ChordScorer chordScorer;
     NoteVerifier noteVerifier;  // constructed with *this as the InputRingReader
 
@@ -252,6 +274,9 @@ private:
     // Zero-output capture scratch, pre-sized in prepare() so the hot loop never
     // allocates (input-only ASIO/JACK configs).
     std::vector<float> inputCaptureScratch;
+    // Dry (pre-shift) mono copy for the tuner while the live pitch shift runs,
+    // pre-sized in prepare().
+    std::vector<float> dryTunerScratch;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(SourceChain)
 };

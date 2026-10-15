@@ -127,6 +127,8 @@ using slopsmith::addon::SetStreamBus;
 using slopsmith::addon::SetStreamBusGain;
 using slopsmith::addon::SetStreamOutputDevice;
 using slopsmith::addon::SetTonePolish;
+using slopsmith::addon::SetLivePitch;
+using slopsmith::addon::GetLivePitch;
 using slopsmith::addon::StartAudio;
 using slopsmith::addon::StartBacking;
 using slopsmith::addon::StopAudio;
@@ -358,6 +360,8 @@ static Napi::Object InitModule(Napi::Env env, Napi::Object exports)
     exports.Set("setMonitorKill", Napi::Function::New(env, SetMonitorKill));
     exports.Set("setNoiseGate", Napi::Function::New(env, SetNoiseGate));
     exports.Set("setTonePolish", Napi::Function::New(env, SetTonePolish));
+    exports.Set("setLivePitch", Napi::Function::New(env, SetLivePitch));
+    exports.Set("getLivePitch", Napi::Function::New(env, GetLivePitch));
 
     // Metering
     exports.Set("getLevels", Napi::Function::New(env, GetLevels));

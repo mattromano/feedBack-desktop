@@ -102,6 +102,8 @@ Napi::Value SetStreamBus(const Napi::CallbackInfo& info);
 Napi::Value SetStreamBusGain(const Napi::CallbackInfo& info);
 Napi::Value SetStreamOutputDevice(const Napi::CallbackInfo& info);
 Napi::Value SetTonePolish(const Napi::CallbackInfo& info);
+Napi::Value SetLivePitch(const Napi::CallbackInfo& info);
+Napi::Value GetLivePitch(const Napi::CallbackInfo& info);
 Napi::Value StartAudio(const Napi::CallbackInfo& info);
 Napi::Value StartBacking(const Napi::CallbackInfo& info);
 Napi::Value StopAudio(const Napi::CallbackInfo& info);

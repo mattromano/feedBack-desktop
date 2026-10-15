@@ -183,6 +183,51 @@ Napi::Value SetTonePolish(const Napi::CallbackInfo& info)
     return env.Undefined();
 }
 
+// ── Live pitch shift (Live Retune) ───────────────────────────────────────────
+// Shift of the monitored guitar on the default source (LivePitchShifter in
+// SourceChain, right after input gain). setLivePitch({ semitones, cents,
+// windowMs }): shift = semitones*100 + cents, clamped engine-side to +/-500
+// cents; windowMs (grain window, 6..40) is optional and keeps the current
+// value when absent. Non-finite numbers are treated as absent. Same defensive
+// shape as SetTonePolish: a non-object is a clean no-op.
+
+Napi::Value SetLivePitch(const Napi::CallbackInfo& info)
+{
+    auto env = info.Env();
+    auto liveEngine = snapshotEngine();
+    if (!liveEngine || info.Length() < 1 || !info[0].IsObject())
+        return Napi::Boolean::New(env, false);
+
+    auto o = info[0].As<Napi::Object>();
+    auto num = [&o](const char* key, double fallback) {
+        if (!o.Has(key)) return fallback;
+        auto v = o.Get(key);
+        if (!v.IsNumber()) return fallback;
+        const double d = v.As<Napi::Number>().DoubleValue();
+        return std::isfinite(d) ? d : fallback;
+    };
+    const double cents = num("semitones", 0.0) * 100.0 + num("cents", 0.0);
+    const double windowMs = num("windowMs", liveEngine->getLivePitchWindowMs());
+    liveEngine->setLivePitch((float) cents, (float) windowMs);
+    return Napi::Boolean::New(env, true);
+}
+
+// { supported, cents, windowMs, ratio, latencyMs } — cents is the applied
+// (clamped) target, ratio the pitch ratio currently running (1 when bypassed),
+// latencyMs the wet path's added delay (0 when bypassed or no device).
+Napi::Value GetLivePitch(const Napi::CallbackInfo& info)
+{
+    auto env = info.Env();
+    auto obj = Napi::Object::New(env);
+    auto liveEngine = snapshotEngine();
+    obj.Set("supported", true);
+    obj.Set("cents", liveEngine ? liveEngine->getLivePitchCents() : 0.0f);
+    obj.Set("windowMs", liveEngine ? liveEngine->getLivePitchWindowMs() : 0.0f);
+    obj.Set("ratio", liveEngine ? liveEngine->getLivePitchRatio() : 1.0f);
+    obj.Set("latencyMs", liveEngine ? liveEngine->getLivePitchLatencyMs() : 0.0);
+    return obj;
+}
+
 Napi::Value IsMonitorMuted(const Napi::CallbackInfo& info)
 {
     auto liveEngine = snapshotEngine();

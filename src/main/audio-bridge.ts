@@ -658,6 +658,44 @@ export function initAudioBridge(): void {
         },
     );
 
+    // Live Retune: pitch shift of the monitored guitar (default source), in
+    // semitones + cents (total clamped to +/-500 engine-side) with an optional
+    // grain window in ms. Runs right after input gain, so note detection, the
+    // gate and the tone chain hear the shifted guitar; the tuner keeps reading
+    // the dry strings. Fail-soft like setBackingSpeed: resolves false on a
+    // downlevel addon, a malformed payload or a native throw, never rejects.
+    ipcMain.handle(
+        'audio:setLivePitch',
+        (_event, payload: { semitones?: number; cents?: number; windowMs?: number }) => {
+            if (!audio || typeof audio.setLivePitch !== 'function') return false;
+            if (!payload || typeof payload !== 'object') return false;
+            const clean: { semitones?: number; cents?: number; windowMs?: number } = {};
+            for (const key of ['semitones', 'cents', 'windowMs'] as const) {
+                const v = payload[key];
+                if (v === undefined) continue;
+                if (typeof v !== 'number' || !Number.isFinite(v)) return false;
+                clean[key] = v;
+            }
+            try {
+                return audio.setLivePitch(clean) !== false;
+            } catch (e: unknown) {
+                console.warn(`[audio] setLivePitch failed: ${e instanceof Error ? e.message : String(e)}`);
+                return false;
+            }
+        },
+    );
+    // { supported, cents, windowMs, ratio, latencyMs }; supported:false on an
+    // addon without the live pitch shifter (or no addon at all).
+    ipcMain.handle('audio:getLivePitch', () => {
+        const off = { supported: false, cents: 0, windowMs: 0, ratio: 1, latencyMs: 0 };
+        if (!audio || typeof audio.getLivePitch !== 'function') return off;
+        try { return audio.getLivePitch() ?? off; }
+        catch (e: unknown) {
+            console.warn(`[audio] getLivePitch failed: ${e instanceof Error ? e.message : String(e)}`);
+            return off;
+        }
+    });
+
     // ── Metering ───────────────────────────────────────────────────────────
 
     ipcMain.handle('audio:getLevels', () => {

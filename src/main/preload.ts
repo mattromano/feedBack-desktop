@@ -269,6 +269,13 @@ const feedBackDesktopApi = {
         }) => ipcRenderer.invoke('audio:setNoiseGate', payload),
         setTonePolish: (payload: { enabled: boolean }) =>
             ipcRenderer.invoke('audio:setTonePolish', payload),
+        // Live Retune: pitch shift of the guitar being played (semitones +
+        // cents, total +/-500 cents; optional grain window in ms). Resolves
+        // false when rejected or unsupported by the native addon.
+        setLivePitch: (payload: { semitones?: number; cents?: number; windowMs?: number }): Promise<boolean> =>
+            ipcRenderer.invoke('audio:setLivePitch', payload),
+        getLivePitch: (): Promise<{ supported: boolean; cents: number; windowMs: number; ratio: number; latencyMs: number }> =>
+            ipcRenderer.invoke('audio:getLivePitch'),
 
         // Metering (polled at 60fps from renderer)
         getLevels: () => ipcRenderer.invoke('audio:getLevels'),

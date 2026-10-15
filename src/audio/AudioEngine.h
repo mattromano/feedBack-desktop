@@ -204,6 +204,14 @@ public:
     // renderer exposes a per-preset toggle.
     void setTonePolishEnabled(bool enabled) { source0().setTonePolishEnabled(enabled); }
 
+    // Live pitch shift of the monitored guitar (semitones*100 + cents, +/-500),
+    // with the grain window in ms. Default source only.
+    void setLivePitch(float cents, float windowMs) { source0().setLivePitch(cents, windowMs); }
+    float getLivePitchCents() const { return source0().getLivePitchCents(); }
+    float getLivePitchWindowMs() const { return source0().getLivePitchWindowMs(); }
+    float getLivePitchRatio() const { return source0().getLivePitchRatio(); }
+    double getLivePitchLatencyMs() const { return source0().getLivePitchLatencyMs(); }
+
     // Backing track — transport moved to engine/BackingPlayer (TLC phase 3);
     // the volume fader + level meter stay engine-side (mix policy).
     void setBackingVolume(float vol) { backingVolume.store(slopsmith::sanitizeMasterGain(vol)); }

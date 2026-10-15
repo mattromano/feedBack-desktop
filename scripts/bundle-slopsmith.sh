@@ -175,9 +175,10 @@ done
 # a first-run prompt offers the download.
 rm -rf "$BUNDLE_DIR"/plugins/*rig-builder/vst "$BUNDLE_DIR"/plugins/*rig_builder/vst
 
-# Desktop-specific plugins (audio_engine, plugin_manager) declared in
-# src/renderer/**/plugin.json
-for dp in "$PROJECT_DIR/src/renderer" "$PROJECT_DIR/src/renderer/plugin-manager"; do
+# Desktop-specific plugins (audio_engine, plugin_manager, live_retune) declared
+# in src/renderer/**/plugin.json. live_retune drives the native engine's live
+# pitch shift (audio.setLivePitch), so it only makes sense in the desktop app.
+for dp in "$PROJECT_DIR/src/renderer" "$PROJECT_DIR/src/renderer/plugin-manager" "$PROJECT_DIR/src/renderer/live-retune"; do
     if [ -f "$dp/plugin.json" ]; then
         pname=$(python3 -c "import json, sys; print(json.load(open(sys.argv[1]))['id'])" "$dp/plugin.json")
         mkdir -p "$BUNDLE_DIR/plugins/$pname"
