@@ -103,12 +103,12 @@ clone_slopsmith() {
 	fi
 
 	# SLOPSMITH_REF selects the core branch/tag to bundle (set by the
-	# Build workflow's slopsmith_ref input). Defaults to main so local
-	# builds and the push/tag CI paths behave exactly as before.
+	# Build workflow's slopsmith_ref input). Defaults to custom, our fork's
+	# build branch (upstream main + our PRs + custom: commits).
 	# --branch accepts either a branch or a tag, both shallow-cloneable.
 	local slopsmith_ref="${SLOPSMITH_REF:-custom}"
-	# SLOPSMITH_REPO overrides the core repo (default got-feedback/feedback),
-	# mirroring SLOPSMITH_REF. Lets a contributor without push access to the
+	# SLOPSMITH_REPO overrides the core repo (default mattromano/feedBack, our
+	# fork; upstream is got-feedback/feedback), mirroring SLOPSMITH_REF. Lets a contributor without push access to the
 	# core repo bundle a branch pushed to their own fork for a test build:
 	#   SLOPSMITH_REPO=me/feedBack SLOPSMITH_REF=my-branch
 	local slopsmith_repo="${SLOPSMITH_REPO:-mattromano/feedBack}"
@@ -131,58 +131,53 @@ clone_slopsmith() {
 	# plugin work in a feature-branch test build).
 	cd "$clone_dir/plugins"
 	local plugins=(
-		# Bundled plugins — all under the got-feedback org after the migration.
-		got-feedback/feedback-plugin-bongocat
+		# mattromano build: every bundled plugin comes from our fork
+		# (mattromano/<same repo name>; upstream got-feedBack is inactive).
+		# drums, multiplayer, nam-tone, notedetect and stems use the forks'
+		# `custom` branch (upstream main + our open PRs + custom: commits);
+		# the rest use the fork's default branch. Personal plugins ship
+		# in-tree in the core fork (mattromano/feedBack@custom, plugins/);
+		# desktop-only ones (live_retune) in src/renderer/ here.
+		mattromano/feedback-plugin-bongocat
 		mattromano/feedBack-plugin-drums@custom:drums
-		got-feedback/feedback-plugin-editor
-		got-feedback/feedback-plugin-flappy-bend
-		got-feedback/feedback-plugin-fretboard
-		got-feedback/feedback-plugin-guitar-theory
-		got-feedback/feedback-plugin-invert-highway
-		got-feedback/feedback-plugin-jumpingtab
-		got-feedback/feedback-plugin-loosefolder:loose_folder
-		got-feedback/feedback-plugin-lyrics-karaoke
-		got-feedback/feedback-plugin-metronome
-		got-feedback/feedback-plugin-midi
+		mattromano/feedBack-plugin-editor:editor
+		mattromano/feedBack-plugin-flappy-bend:flappy_bend
+		mattromano/feedBack-plugin-fretboard:fretboard
+		mattromano/feedBack-plugin-guitar-theory:guitar_theory
+		mattromano/feedBack-plugin-invert-highway:invert_highway
+		mattromano/feedBack-plugin-jumpingtab:jumpingtab
+		mattromano/feedBack-plugin-loosefolder:loose_folder
+		mattromano/feedBack-plugin-lyrics-karaoke:lyrics_karaoke
+		mattromano/feedBack-plugin-metronome:metronome
+		mattromano/feedBack-plugin-midi:midi
 		mattromano/feedBack-plugin-multiplayer@custom:multiplayer
-		got-feedback/feedback-plugin-musicxml-import
+		mattromano/feedBack-plugin-musicxml-import:musicxml_import
 		mattromano/feedBack-plugin-nam-tone@custom:nam_tone
 		mattromano/feedBack-plugin-notedetect@custom:notedetect
-		got-feedback/feedback-plugin-piano
-		got-feedback/feedback-plugin-practice
-		got-feedback/feedback-plugin-sectionmap
-		got-feedback/feedback-plugin-song-preview
-		got-feedback/feedback-plugin-splitscreen
-		got-feedback/feedback-plugin-staffview
-		got-feedback/feedback-plugin-stem-mixer
-		# Stem Splitter — repo uses the feedBack-plugin-* casing (capital B),
-		# so the lowercase prefix strip doesn't apply; explicit dirname
-		# matching the plugin id, same as rig_builder below.
-		got-feedback/feedBack-plugin-stem-splitter:stem_splitter
-		got-feedback/feedback-plugin-stems
-		got-feedback/feedback-plugin-stepmode
-		got-feedback/feedback-plugin-strum-fighter
-		got-feedback/feedback-plugin-studio
-		got-feedback/feedback-plugin-tabview
-		got-feedback/feedback-plugin-themes
-		got-feedback/feedback-plugin-transpose-chords
-		got-feedback/feedback-plugin-tutorials
-		got-feedback/feedback-plugin-virtuoso
-		# Rig Builder (NAM tone builder) — the repo was renamed
-		# feedBack-plugin-rig-builder (capital B, so the lowercase prefix
-		# strip doesn't apply; explicit dirname instead). The old
-		# `got-feedback/rig_builder` name only worked via a GitHub rename
-		# redirect, which silently breaks if a new repo ever takes that name.
-		got-feedback/feedBack-plugin-rig-builder:rig_builder
-		# Camera Director (3D-highway free camera) — our fork of nimuart's plugin
-		# (v3 popover launcher + drum/piano support; PR upstream at
-		# nimuart/cameradirector_feedback#3). Repo isn't under the
+		mattromano/feedBack-plugin-piano:piano
+		mattromano/feedBack-plugin-practice:practice
+		mattromano/feedBack-plugin-sectionmap:sectionmap
+		mattromano/feedBack-plugin-song-preview:song_preview
+		mattromano/feedBack-plugin-splitscreen:splitscreen
+		mattromano/feedBack-plugin-staffview:staffview
+		mattromano/feedBack-plugin-stem-mixer:stem_mixer
+		mattromano/feedBack-plugin-stem-splitter:stem_splitter
+		mattromano/feedBack-plugin-stems@custom:stems
+		mattromano/feedBack-plugin-stepmode:stepmode
+		mattromano/feedBack-plugin-strum-fighter:strum_fighter
+		mattromano/feedBack-plugin-studio:studio
+		mattromano/feedBack-plugin-tabview:tabview
+		mattromano/feedBack-plugin-themes:themes
+		mattromano/feedBack-plugin-transpose-chords:transpose_chords
+		mattromano/feedBack-plugin-tutorials:tutorials
+		mattromano/feedBack-plugin-virtuoso:virtuoso
+		# Rig Builder (NAM tone builder). Explicit dirname: the capital-B
+		# repo name doesn't match the lowercase prefix strip.
+		mattromano/feedBack-plugin-rig-builder:rig_builder
+		# Camera Director (3D-highway free camera); repo isn't under the
 		# feedback-plugin-* prefix, so give an explicit dirname matching the id.
-		got-feedback/cameradirector_feedback:camera_director
-		# mattromano build: drums, multiplayer, nam-tone and notedetect above
-		# come from our forks' `custom` branch (upstream main + our open PRs);
-		# these two are our own plugins. Personal plugins ship in-tree in the
-		# core fork (mattromano/feedBack@custom, plugins/).
+		mattromano/cameradirector_feedback:camera_director
+		# Our own plugins.
 		mattromano/feedBack-plugin-autotune:autotune
 		mattromano/feedBack-plugin-scorecard:scorecard
 	)

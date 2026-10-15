@@ -32,7 +32,7 @@ if [ -z "$SLOPSMITH_DIR" ] || [ ! -d "$SLOPSMITH_DIR" ]; then
     echo "  \$SLOPSMITH_DIR (unset)" >&2
     echo "  $PROJECT_DIR/../slopsmith" >&2
     echo "  $HOME/Repositories/slopsmith" >&2
-    echo "Clone it with: git clone https://github.com/got-feedback/feedback.git ../slopsmith" >&2
+    echo "Clone it with: git clone -b custom https://github.com/mattromano/feedBack.git ../slopsmith" >&2
     exit 1
 fi
 

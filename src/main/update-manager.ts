@@ -97,8 +97,11 @@ export type UpdateStatus =
     | { status: 'error'; channel: UpdateChannel; currentVersion: string | null; lastChecked: number | null; message: string };
 
 // Repo the Velopack feed (win/mac) and the Linux nightly release both live
-// in. Matches the existing electron-builder release pipeline.
-const FEED_URL = 'https://github.com/got-feedback/feedback-desktop';
+// in. mattromano build: our fork, never got-feedback/feedback-desktop, so no
+// update channel (Nightly included) can replace this build with a stock
+// upstream one. The fork publishes no releases today, so checks find nothing
+// until we start publishing our own (build.yml tag push / nightly.yml).
+const FEED_URL = 'https://github.com/mattromano/feedBack-desktop';
 
 // GitHub REST API URL for the rolling nightly release. Public repo, no auth
 // needed. Only used on Linux.
