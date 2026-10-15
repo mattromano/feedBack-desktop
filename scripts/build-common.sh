@@ -133,7 +133,7 @@ clone_slopsmith() {
 	local plugins=(
 		# mattromano build: every bundled plugin comes from our fork
 		# (mattromano/<same repo name>; upstream got-feedBack is inactive).
-		# drums, multiplayer, nam-tone, notedetect and stems use the forks'
+		# drums, multiplayer, nam-tone, notedetect, splitscreen and stems use the forks'
 		# `custom` branch (upstream main + our open PRs + custom: commits);
 		# the rest use the fork's default branch. Personal plugins ship
 		# in-tree in the core fork (mattromano/feedBack@custom, plugins/);
@@ -158,7 +158,7 @@ clone_slopsmith() {
 		mattromano/feedBack-plugin-practice:practice
 		mattromano/feedBack-plugin-sectionmap:sectionmap
 		mattromano/feedBack-plugin-song-preview:song_preview
-		mattromano/feedBack-plugin-splitscreen:splitscreen
+		mattromano/feedBack-plugin-splitscreen@custom:splitscreen
 		mattromano/feedBack-plugin-staffview:staffview
 		mattromano/feedBack-plugin-stem-mixer:stem_mixer
 		mattromano/feedBack-plugin-stem-splitter:stem_splitter
