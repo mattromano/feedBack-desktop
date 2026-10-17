@@ -517,6 +517,10 @@ private:
     // per block (double DSP + double ring push → half-speed garbled audio) and
     // leave a live registration behind after stopAudio()'s single remove.
     bool inputCallbackRegistered = false;
+    // True only after setAudioDevices() succeeded with a named input. Until
+    // then startAudio() refuses to capture, so guitar features can never run
+    // on a microphone the user didn't configure (e.g. the OS default mic).
+    std::atomic<bool> deviceConfigured { false };
 
     // ── Additional input devices — moved to engine/ExtraInputs.{h,cpp}
     // (TLC phase 5). The split output callback drains extraInputs.slots

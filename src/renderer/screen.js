@@ -1619,6 +1619,15 @@ window.__feedBackDesktopAudioHooks = window.__feedBackDesktopAudioHooks || {};
                 statusText.textContent = 'Audio stopped';
             } else {
                 await api.startAudio();
+                // The engine refuses to start without a configured guitar input
+                // (it never falls back to a microphone) — say so instead of lying.
+                const started = typeof api.isAudioRunning === 'function'
+                    ? !!(await api.isAudioRunning()) : true;
+                if (!started) {
+                    statusDot.className = 'w-3 h-3 rounded-full bg-red-500';
+                    statusText.textContent = 'No guitar input configured — pick your guitar input and press Apply.';
+                    return;
+                }
                 audioRunning = true;
                 toggleBtn.textContent = 'Stop';
                 statusDot.className = 'w-3 h-3 rounded-full bg-emerald-500';

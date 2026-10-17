@@ -35,3 +35,15 @@ test('a missing saved input skips auto-apply instead of falling back to another 
     const between = startup.slice(guard, setDevice);
     assert.match(between, /\} else if \(!probedCompatible\) \{[\s\S]*\} else \{/);
 });
+
+test('Start button reports a refused start instead of claiming "Audio running"', () => {
+    const at = source.indexOf("toggleBtn.addEventListener('click', async () => {");
+    assert.ok(at >= 0, 'toggle handler not found');
+    const handler = source.slice(at, source.indexOf('deviceTypeSelect.addEventListener', at));
+    const start = handler.indexOf('await api.startAudio();');
+    const check = handler.indexOf('await api.isAudioRunning', start);
+    const refused = handler.indexOf('No guitar input configured', check);
+    const running = handler.indexOf("statusText.textContent = 'Audio running';", start);
+    assert.ok(check > start, 'must ask the engine whether it actually started');
+    assert.ok(refused > check && refused < running, 'refused start must be reported before the running branch');
+});

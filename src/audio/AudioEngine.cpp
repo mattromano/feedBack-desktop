@@ -41,6 +41,11 @@ AudioEngine::AudioEngine()
     auto result = inputDeviceManager.initialiseWithDefaultDevices(2, 2);
     if (result.isNotEmpty())
         std::cerr << "[AudioEngine] input init note: " << result.toStdString() << std::endl;
+    // initialiseWithDefaultDevices OPENS the OS default duplex device. Close it:
+    // the engine must stay off until the user's own input is applied via
+    // setAudioDevices(), or a bare startAudio() would capture the default mic.
+    // Closing keeps the device type, so scans and setAudioDevices still work.
+    inputDeviceManager.closeAudioDevice();
 
     auto outResult = outputDeviceManager.initialiseWithDefaultDevices(0, 2);
     if (outResult.isNotEmpty())
@@ -422,6 +427,15 @@ AudioEngine::DeviceConfigResult AudioEngine::setAudioDevices(const DeviceConfig&
     juce::String resolvedOutputType = config.outputType.isEmpty()
         ? resolvedInputType : config.outputType;
 
+    // An empty input name would let the backend pick a device (the OS default,
+    // or the first enumerated input in split mode) — for a guitar engine that
+    // means a microphone. Refuse, and leave the current setup untouched.
+    if (config.inputDevice.isEmpty())
+    {
+        res.error = "No guitar input selected";
+        return res;
+    }
+
     // Stop audio BEFORE mutating device-type or device setup. JUCE can
     // tear down and re-scan devices inside setCurrentAudioDeviceType /
     // setAudioDeviceSetup, and doing that while the audio callback is
@@ -450,6 +464,8 @@ AudioEngine::DeviceConfigResult AudioEngine::setAudioDevices(const DeviceConfig&
     // the startAudio() below re-opens them at the new config (so panels using a
     // second interface survive a device/sample-rate/buffer change automatically).
     stopAudio();
+    // The old setup is gone; until this call succeeds there is no configured input.
+    deviceConfigured.store(false, std::memory_order_relaxed);
 
     // setCurrentAudioDeviceType can throw from inside JUCE backends (ASIO
     // is the usual culprit). Catch and propagate as a structured error so
@@ -556,6 +572,8 @@ AudioEngine::DeviceConfigResult AudioEngine::setAudioDevices(const DeviceConfig&
         duplexMode.store(false, std::memory_order_relaxed);
     }
 
+    deviceConfigured.store(true, std::memory_order_relaxed);
+
     // startAudio() re-opens the desired extra input devices at the new config
     // (bindInputDevice forces + verifies the new rate). If the engine was not
     // running, they stay closed with their intent kept until the next startAudio().
@@ -577,6 +595,15 @@ void AudioEngine::startAudio()
     // stop races in, "the user wants audio" survives (read by phase 8's
     // setAudioDevices restart fix; see EngineState.h).
     state.userWantsAudio.store(true, std::memory_order_relaxed);
+    // No configured guitar input (never applied, unplugged, or the last
+    // setAudioDevices failed): stay off rather than capture whatever device
+    // happens to be open. The intent above survives, so a later successful
+    // setAudioDevices() starts audio then.
+    if (!deviceConfigured.load(std::memory_order_relaxed))
+    {
+        fprintf(stderr, "[AudioEngine] startAudio: no guitar input configured — staying off\n");
+        return;
+    }
     if (audioRunning.load(std::memory_order_relaxed))
     {
         fprintf(stderr, "[AudioEngine] startAudio: already running\n");
