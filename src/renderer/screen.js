@@ -990,6 +990,11 @@ window.__feedBackDesktopAudioHooks = window.__feedBackDesktopAudioHooks || {};
                 const outputTypeInfo = currentDeviceTypes.find(t => t.name === savedOutputType);
                 if (outputTypeInfo) updateOutputDeviceDropdown(outputTypeInfo);
             }
+            // A saved input that isn't connected (unplugged interface) must not
+            // fall through to "Default": the split path would open the FIRST
+            // enumerated input — often a headset mic — and play it live
+            // through the loaded amp chain.
+            const savedInputMissing = !!saved.input && !selectHasValue(inputDeviceSelect, saved.input);
             if ('input' in saved && selectHasValue(inputDeviceSelect, saved.input)) inputDeviceSelect.value = String(saved.input);
             if ('output' in saved && selectHasValue(outputDeviceSelect, saved.output)) outputDeviceSelect.value = String(saved.output);
             const probedOptions = await refreshDeviceOptions({
@@ -1025,7 +1030,10 @@ window.__feedBackDesktopAudioHooks = window.__feedBackDesktopAudioHooks || {};
             // fix device selection manually without losing the rest of
             // their setup (common case: unplugged interface at startup).
             const probedCompatible = probedOptions != null && probedOptions.compatible === true;
-            if (!probedCompatible) {
+            if (savedInputMissing) {
+                statusText.textContent = `Saved input device not connected: ${saved.input}. Plug it in or pick another input, then Apply.`;
+                statusDot.className = 'w-3 h-3 rounded-full bg-red-500';
+            } else if (!probedCompatible) {
                 statusText.textContent = (probedOptions && typeof probedOptions.error === 'string' && probedOptions.error)
                     ? `Saved device config not compatible: ${probedOptions.error}`
                     : 'Saved device config not compatible';
@@ -1611,6 +1619,15 @@ window.__feedBackDesktopAudioHooks = window.__feedBackDesktopAudioHooks || {};
                 statusText.textContent = 'Audio stopped';
             } else {
                 await api.startAudio();
+                // The engine refuses to start without a configured guitar input
+                // (it never falls back to a microphone) — say so instead of lying.
+                const started = typeof api.isAudioRunning === 'function'
+                    ? !!(await api.isAudioRunning()) : true;
+                if (!started) {
+                    statusDot.className = 'w-3 h-3 rounded-full bg-red-500';
+                    statusText.textContent = 'No guitar input configured — pick your guitar input and press Apply.';
+                    return;
+                }
                 audioRunning = true;
                 toggleBtn.textContent = 'Stop';
                 statusDot.className = 'w-3 h-3 rounded-full bg-emerald-500';
