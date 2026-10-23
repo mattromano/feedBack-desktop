@@ -15,6 +15,7 @@ Guitar Hero package included. People download one app from
 | RockHeroSmith | mattromano/feedBack-plugin-rockherosmith | `feature/build-a-band-stage` |
 | Drums | mattromano/feedBack-plugin-drums | `feature/build-a-band-stage` |
 | Lyrics Karaoke | mattromano/feedBack-plugin-lyrics-karaoke | `feature/build-a-band-stage` |
+| Note Detect, Stems, Splitscreen, Scorecard | their mattromano forks | `feature/build-a-band-stage` |
 | everything else | the same plugins as `custom` | as listed there |
 
 ## Shipping a bug fix
