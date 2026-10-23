@@ -103,11 +103,10 @@ clone_slopsmith() {
 	fi
 
 	# SLOPSMITH_REF selects the core branch/tag to bundle (set by the
-	# Build workflow's slopsmith_ref input). release/rockband: defaults to
-	# feature/build-a-band-stage (the Rock Band release line); custom is our fork's
+	# Build workflow's slopsmith_ref input). Defaults to custom, our fork's
 	# build branch (upstream main + our PRs + custom: commits).
 	# --branch accepts either a branch or a tag, both shallow-cloneable.
-	local slopsmith_ref="${SLOPSMITH_REF:-feature/build-a-band-stage}"
+	local slopsmith_ref="${SLOPSMITH_REF:-custom}"
 	# SLOPSMITH_REPO overrides the core repo (default mattromano/feedBack, our
 	# fork; upstream is got-feedback/feedback), mirroring SLOPSMITH_REF. Lets a contributor without push access to the
 	# core repo bundle a branch pushed to their own fork for a test build:
@@ -140,7 +139,7 @@ clone_slopsmith() {
 		# in-tree in the core fork (mattromano/feedBack@custom, plugins/);
 		# desktop-only ones (live_retune) in src/renderer/ here.
 		mattromano/feedback-plugin-bongocat
-		mattromano/feedBack-plugin-drums@feature/build-a-band-stage:drums
+		mattromano/feedBack-plugin-drums@custom:drums
 		mattromano/feedBack-plugin-editor:editor
 		mattromano/feedBack-plugin-flappy-bend:flappy_bend
 		mattromano/feedBack-plugin-fretboard:fretboard
@@ -148,22 +147,22 @@ clone_slopsmith() {
 		mattromano/feedBack-plugin-invert-highway:invert_highway
 		mattromano/feedBack-plugin-jumpingtab:jumpingtab
 		mattromano/feedBack-plugin-loosefolder:loose_folder
-		mattromano/feedBack-plugin-lyrics-karaoke@feature/build-a-band-stage:lyrics_karaoke
+		mattromano/feedBack-plugin-lyrics-karaoke:lyrics_karaoke
 		mattromano/feedBack-plugin-metronome:metronome
 		mattromano/feedBack-plugin-midi:midi
 		mattromano/feedBack-plugin-multiplayer@custom:multiplayer
 		mattromano/feedBack-plugin-musicxml-import:musicxml_import
 		mattromano/feedBack-plugin-nam-tone@custom:nam_tone
-		mattromano/feedBack-plugin-notedetect@feature/build-a-band-stage:notedetect
+		mattromano/feedBack-plugin-notedetect@custom:notedetect
 		mattromano/feedBack-plugin-piano:piano
 		mattromano/feedBack-plugin-practice:practice
 		mattromano/feedBack-plugin-sectionmap:sectionmap
 		mattromano/feedBack-plugin-song-preview:song_preview
-		mattromano/feedBack-plugin-splitscreen@feature/build-a-band-stage:splitscreen
+		mattromano/feedBack-plugin-splitscreen@custom:splitscreen
 		mattromano/feedBack-plugin-staffview:staffview
 		mattromano/feedBack-plugin-stem-mixer:stem_mixer
 		mattromano/feedBack-plugin-stem-splitter:stem_splitter
-		mattromano/feedBack-plugin-stems@feature/build-a-band-stage:stems
+		mattromano/feedBack-plugin-stems@custom:stems
 		mattromano/feedBack-plugin-stepmode:stepmode
 		mattromano/feedBack-plugin-strum-fighter:strum_fighter
 		mattromano/feedBack-plugin-studio:studio
@@ -180,10 +179,10 @@ clone_slopsmith() {
 		mattromano/cameradirector_feedback:camera_director
 		# Our own plugins.
 		mattromano/feedBack-plugin-autotune:autotune
-		# Rock Band / Guitar Hero (release/rockband): 5-fret play and the band stage.
-		mattromano/feedBack-plugin-five-fret@main:five_fret
-		mattromano/feedBack-plugin-rockherosmith@feature/build-a-band-stage:rockherosmith
-		mattromano/feedBack-plugin-scorecard@feature/build-a-band-stage:scorecard
+		# Rock Band / Guitar Hero: 5-fret play and the band stage.
+		mattromano/feedBack-plugin-five-fret:five_fret
+		mattromano/feedBack-plugin-rockherosmith:rockherosmith
+		mattromano/feedBack-plugin-scorecard:scorecard
 	)
 
 	local total=0

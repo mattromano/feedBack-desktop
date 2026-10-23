@@ -10,13 +10,15 @@ Guitar Hero package included. People download one app from
 
 | Part | Repo | Branch |
 |---|---|---|
-| core | mattromano/feedBack | `feature/build-a-band-stage` |
+| core | mattromano/feedBack | `custom` |
 | 5-Fret | mattromano/feedBack-plugin-five-fret | `main` |
-| RockHeroSmith | mattromano/feedBack-plugin-rockherosmith | `feature/build-a-band-stage` |
-| Drums | mattromano/feedBack-plugin-drums | `feature/build-a-band-stage` |
-| Lyrics Karaoke | mattromano/feedBack-plugin-lyrics-karaoke | `feature/build-a-band-stage` |
-| Note Detect, Stems, Splitscreen, Scorecard | their mattromano forks | `feature/build-a-band-stage` |
-| everything else | the same plugins as `custom` | as listed there |
+| RockHeroSmith | mattromano/feedBack-plugin-rockherosmith | `main` |
+| Drums, Note Detect, Stems, Splitscreen | their mattromano forks | `custom` |
+| Lyrics Karaoke, Scorecard | their mattromano forks | `main` |
+| everything else | as listed in `scripts/build-common.sh` | |
+
+The Rock Band work (once on `feature/build-a-band-stage` in each repo) is on these main lines;
+that branch name is retired.
 
 ## Shipping a bug fix
 

@@ -22,9 +22,9 @@ on:
   workflow_dispatch:
     inputs:
       slopsmith_ref:
-        description: "Core ref (branch or tag) to bundle. release/rockband: defaults to feature/build-a-band-stage (the Rock Band release line)."
+        description: "Core ref (branch or tag) to bundle. Defaults to custom (our integration branch)."
         required: false
-        default: feature/build-a-band-stage
+        default: custom
       slopsmith_repo:
         description: "Core repo to bundle. Defaults to our fork."
         required: false
@@ -152,7 +152,7 @@ jobs:
           # events (the inputs context only carries values on
           # workflow_dispatch), so fall back to our fork's custom branch.
           # clone_slopsmith() in build-common.sh has the same defaults.
-          SLOPSMITH_REF: ${{ inputs.slopsmith_ref || 'feature/build-a-band-stage' }}
+          SLOPSMITH_REF: ${{ inputs.slopsmith_ref || 'custom' }}
           SLOPSMITH_REPO: ${{ inputs.slopsmith_repo || 'mattromano/feedBack' }}
           # PAT with read access to the private got-feedback repos so
           # build-common.sh can clone core + the bundled plugins.
