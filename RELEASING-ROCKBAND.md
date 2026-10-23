@@ -1,6 +1,6 @@
 # Rock Band release of feedBack
 
-The `release/rockband` branch of this repo builds the ready-made feedBack app with the Rock Band /
+The `custom` branch of this repo builds the ready-made feedBack app with the Rock Band /
 Guitar Hero package included. People download one app from
 [Releases](https://github.com/mattromano/feedBack-desktop/releases); nothing else to install.
 
@@ -32,9 +32,8 @@ that branch name is retired.
      (`APPLE_SIGNING_IDENTITY`, `APPLE_ID`, `APPLE_APP_SPECIFIC_PASSWORD`, `APPLE_TEAM_ID`) makes Mac
      updates install in place too.
 
-Only desktop changes (Electron, native audio) need commits on this branch; core and plugin fixes
-are picked up from their branches by the next tag. To bring in new `custom` desktop work:
-`git merge origin/custom` on `release/rockband`.
+Desktop changes (Electron, native audio) go on this repo's `custom`; core and plugin fixes are
+picked up from their branches by the next tag.
 
 `./scripts/release-rockband.sh 0.3.1 --dry-run` shows what would be tagged without pushing.
 

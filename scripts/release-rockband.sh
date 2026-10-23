@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Cut a Rock Band release of the desktop app (see RELEASING-ROCKBAND.md).
 #
-#   ./scripts/release-rockband.sh 0.3.1            tag release/rockband's tip as v0.3.1 and push it
+#   ./scripts/release-rockband.sh 0.3.1            tag custom's tip as v0.3.1 and push it
 #   ./scripts/release-rockband.sh 0.3.1 --dry-run  say what it would do
 #
 # The tag push starts the Build workflow: Mac, Windows and Linux builds of this
@@ -10,7 +10,7 @@
 # that installed apps pick up through the in-app updater.
 set -euo pipefail
 REPO=mattromano/feedBack-desktop
-BRANCH=release/rockband
+BRANCH=custom
 version="${1:-}"
 dry=0
 [ "${2:-}" = "--dry-run" ] && dry=1
