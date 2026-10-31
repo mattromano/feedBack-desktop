@@ -69,6 +69,9 @@ practise it on a loop.
   auto cymbals always play their sound.
 - **Timing:** set your **input offset** first, then a **kick offset** if your kick lands earlier or
   later than your hands. The end-of-song card measures both and offers an **Apply** button.
+- **Just want to play along?** Plugins → Drums → **Play style: Freestyle (no score)**. No score, no
+  MISS, no results; the highway glows while you're in time with the song. Turn off **Freestyle
+  timing feedback** for nothing but the notes.
 - **Hi-hat pedal:** Plugins → Drums → **Hi-hat pedal hits** chooses whether it's ignored (Rock
   Band), plays the chart's pedal notes, or works as a second kick.
 - **Full screen stage** and **Miss sound** are switches on Band setup; **Failing** makes a band
@@ -92,12 +95,14 @@ practise it on a loop.
 - Drums, 5-fret and vocal plays count for stats, XP, progression, Career and Achievements (Flawless,
   On Fire, Expert, Pro Kit feats), with per-part bests and run history.
 
-### Drums (Drum Highway 4.10)
+### Drums (Drum Highway 4.11)
 
 | | |
 |---|---|
 | ![Hit feedback](docs/screenshots/drums-hit.png) | ![Star power ready](docs/screenshots/drums-star-power-ready.png) |
 | Hit feedback: PERFECT, sparks, score pops | "STAR POWER READY", the streak burning orange at x4 |
+| ![Freestyle: locked in](docs/screenshots/drums-freestyle-locked-in.jpg) | ![Freestyle: dragging](docs/screenshots/drums-freestyle-dragging.jpg) |
+| Freestyle: no score, the track glows while you're locked in | Freestyle: playing late says DRAGGING, never MISS |
 
 - **Rock Band-style scoring** from a YARG drums engine port: multiplier, streak, stars, star power,
   drum fills that activate it, drum solos, accent / ghost bonuses.
@@ -110,6 +115,10 @@ practise it on a loop.
   with EARLY / LATE and MISS over the strike line, a shake when a 10+ streak breaks.
 - **Bigger HUD** with callouts: "x3 MULTIPLIER", "100 NOTE STREAK!", "STAR POWER READY",
   "STREAK LOST"; the streak burns orange then gold on a hot run. HUD size setting.
+- **Freestyle play style (no score)**: nothing is judged (no score, MISS, star power or results), the
+  notes just scroll to play along. Hits are rated only on timing with the song, whatever pad: the
+  track glows and pulses on the beat, with LOCKED IN / IN THE POCKET / RUSHING / DRAGGING. A
+  switch turns the timing feedback off too. RockHeroSmith's Solo screen and bands still score.
 - **Freestyle fills** option (Rock Band): with star power ready a fill becomes a free zone ending on
   the glowing activation note.
 - Difficulties Easy to Expert+, with missing lower levels generated from Expert; pro cymbals or
