@@ -44,8 +44,8 @@ jobs:
       # pushes still build all three.
       matrix:
         include: ${{ fromJSON((github.event_name == 'push' || inputs.platforms == 'all')
-          && '[{"os":"ubuntu-22.04","platform":"linux","arch":"x64"},{"os":"macos-14","platform":"mac","arch":"arm64"},{"os":"windows-latest","platform":"win","arch":"x64"}]'
-          || '[{"os":"macos-14","platform":"mac","arch":"arm64"}]') }}
+          && '[{"os":"ubuntu-22.04","platform":"linux","arch":"x64"},{"os":"macos-15","platform":"mac","arch":"arm64"},{"os":"windows-latest","platform":"win","arch":"x64"}]'
+          || '[{"os":"macos-15","platform":"mac","arch":"arm64"}]') }}
 
     runs-on: ${{ matrix.os }}
 
@@ -501,7 +501,9 @@ jobs:
 
   release:
     needs: build
-    if: startsWith(github.ref, 'refs/tags/v')
+    # custom: publish whatever platforms built. A failed Mac build (e.g. a
+    # runner image brownout) must not hold back the Windows update.
+    if: ${{ !cancelled() && startsWith(github.ref, 'refs/tags/v') }}
     runs-on: ubuntu-latest
     permissions:
       contents: write
