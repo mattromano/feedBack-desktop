@@ -67,8 +67,10 @@ practise it on a loop.
   you miss (your pads stay silent: you hear the record). **Song + pads** keeps the drum track and
   adds your pad sounds. **Kit only** mutes the drum track so you only hear your kit. Auto kick and
   auto cymbals always play their sound.
-- **Timing:** set your **input offset** first, then a **kick offset** if your kick lands earlier or
-  later than your hands. The end-of-song card measures both and offers an **Apply** button.
+- **Timing:** run **Calibrate** (main menu, under Settings) once with each instrument you play. It
+  measures picture vs sound and how late each guitar, kit and controller registers, sets every
+  offset for you and locks them, so you can just play. Fine-tune a **kick offset** there (or from the
+  drums end-of-song card) if your kick lands earlier or later than your hands.
 - **Just want to play along?** Plugins → Drums → **Play style: Freestyle (no score)**. No score, no
   MISS, no results; the highway glows while you're in time with the song. Turn off **Freestyle
   timing feedback** for nothing but the notes.
@@ -95,7 +97,7 @@ practise it on a loop.
 - Drums, 5-fret and vocal plays count for stats, XP, progression, Career and Achievements (Flawless,
   On Fire, Expert, Pro Kit feats), with per-part bests and run history.
 
-### Drums (Drum Highway 4.11)
+### Drums (Drum Highway 4.12)
 
 | | |
 |---|---|
@@ -167,10 +169,33 @@ practise it on a loop.
 - Guitar Pro import fixes (hammer-ons, slides, ghost notes, fret-hand anchors) and guitar solo
   detection.
 
+### Calibrate (timing, once for every instrument)
+
+| | |
+|---|---|
+| ![Pick what you're calibrating](docs/screenshots/calibrate-pick.jpg) | ![Listen: eyes closed, hits counted](docs/screenshots/calibrate-listen.jpg) |
+| Pick one instrument, or two for split view | Listen: eyes closed, play on the clicks; hits are counted live |
+| ![Results: every suggested offset](docs/screenshots/calibrate-results.jpg) | ![Every timing setting in one place](docs/screenshots/calibrate-settings.jpg) |
+| Results: now, suggested, change and how reliable, with Apply | Every timing setting in one place, with the A/V lock |
+
+- **Calibrate** in the main menu: one guided ~1 minute test song for real guitar, real bass, the drum
+  kit, drum controllers and 5-Fret controllers (one player, or two in split view). Play by ear with
+  the screen black, then by eye with no clicks, then normally.
+- A coach shows the step, the beat, a hit counter and your last hits as early / late dots for each
+  instrument, and warns when one isn't sending anything.
+- Results in plain words ("Picture and sound were 53 ms apart. Rock Band Drums hits register 95 ms
+  late."), then each setting with its suggested value and a confidence rating; Apply one, the ones
+  you tick, or all.
+- **Locks your timing**: once applied, nothing changes the A/V offset automatically (Note Detection's
+  after-song auto-calibrate stays off), except an optional shift when you switch headphones or
+  speakers.
+- Every timing setting on one page with − / + buttons: A/V offset, guitar latency, drum kit and kick
+  offsets, and each drum and 5-Fret controller's own offset.
+
 ### Sync and playback
 - Render clock phase-locked to the audio (no backward frames), count-in that follows the rewind and
   only plays when needed, A/V offset slider fixes.
-- **Sync Lab** (measured A/V, guitar latency and drum input offsets), **Highway Tweaks** (stems
+- **Highway Tweaks** (stems
   clock, Rock Band-style hit / miss verdicts on the 3D highway), **Song Cents** (how far each
   recording sits off its chart tuning).
 - Stems: no more under-run stutter; plugin mutes stack, fade and never get saved with the song.
@@ -195,7 +220,7 @@ practise it on a loop.
 | Part | Repo | Branch |
 |---|---|---|
 | Desktop app (this repo) | [mattromano/feedBack-desktop](https://github.com/mattromano/feedBack-desktop) | `custom` |
-| Core, plus Guitar Volume, Highway Tweaks, Rocksmith Play Counts, Song Cents, Sync Lab, Tone Pack | [mattromano/feedBack](https://github.com/mattromano/feedBack) | `custom` |
+| Core, plus Guitar Volume, Highway Tweaks, Rocksmith Play Counts, Song Cents, Sync Lab (Calibrate), Tone Pack | [mattromano/feedBack](https://github.com/mattromano/feedBack) | `custom` |
 | Drum Highway | [mattromano/feedBack-plugin-drums](https://github.com/mattromano/feedBack-plugin-drums) | `custom` |
 | Note Detection | [mattromano/feedBack-plugin-notedetect](https://github.com/mattromano/feedBack-plugin-notedetect) | `custom` |
 | Stems | [mattromano/feedBack-plugin-stems](https://github.com/mattromano/feedBack-plugin-stems) | `custom` |
