@@ -13,6 +13,68 @@ This branch (`custom`) bundles the core and plugins from the `mattromano` forks 
 Building on Windows: [WINDOWS_BUILD_REQUIREMENTS.md](WINDOWS_BUILD_REQUIREMENTS.md) and
 [scripts/BUILD_SCRIPTS.md](scripts/BUILD_SCRIPTS.md).
 
+![A band song: real guitar on the 3D highway next to the Rock Band-style drum track](docs/screenshots/band-stage.png)
+
+| | |
+|---|---|
+| ![Home, with RockHeroSmith](docs/screenshots/home.png) | ![Drums: star power active](docs/screenshots/drums-star-power.png) |
+| Home: **Play RockHeroSmith** for a band, **Play solo** to play alone | Drums: star power doubles your multiplier (x8) |
+
+## How to play RockHeroSmith
+
+RockHeroSmith is the band mode: real guitar, a drum kit, a singer and Guitar Hero / Rock Band
+controllers on one stage. You can play it **solo** (a band of one) or as a **band**.
+
+### Solo: the quickest way in
+
+![The Solo screen](docs/screenshots/solo.png)
+
+1. On Home, click **Play solo** (or RockHeroSmith → **Play solo**).
+2. Pick your **instrument**: **Drums (kit)** for an electronic kit over MIDI, **Drum controller**,
+   **5-fret controller** (a game pad or plastic guitar; Lead, Rhythm or Bass), or **Guitar** (real
+   guitar or bass).
+3. Pick the **difficulty** and, for drums, the **drum sound** (see [Drum sound](#drum-sound) below).
+4. Click a song in the list (it only shows songs with that part). It starts right away.
+
+The screen remembers everything, and Esc or **Next song** on the results brings you back to the list.
+
+### Band: two or more players
+
+| | |
+|---|---|
+| ![Band setup](docs/screenshots/band-setup.png) | ![Confirm](docs/screenshots/band-confirm.png) |
+| 1. Band setup: turn parts on, pick inputs | 3. Confirm: part, difficulty and sound per player |
+
+1. On Home, click **Play RockHeroSmith**. On **Band setup**, switch on the parts you have and
+   pick their inputs: **Guitar** (your audio interface), **Drums** (your kit; **Find my kit**
+   listens for a pad), **Vocals** (a mic). Game controllers join by pressing **Start**; an Xbox
+   pad picks 5-Fret (**X**) or Drums (**B**).
+2. **Choose a song**. The Song Library opens in pick mode with **Playable by band** on, so it only
+   lists songs every player can play; filter by drum chart, 5-fret part, vocal pitch and so on.
+3. On **Confirm**, set each player's part, difficulty and drum sound, then **GO** (or press Start
+   on a controller, or hit any pad).
+
+![Picking a song for the band](docs/screenshots/library-band-pick.png)
+
+**In the song:** Start on a controller pauses; holding Back for a second asks to leave. **P**
+opens each player's settings (difficulty, offsets, drum sound) without stopping the song, and
+**M** opens the sidebar. After the song, the results show each player's sections; click one to
+practise it on a loop.
+
+### Tips
+
+- <a id="drum-sound"></a>**Drum sound:** **Rock Band** plays the song's drum track and drops it when
+  you miss (your pads stay silent: you hear the record). **Song + pads** keeps the drum track and
+  adds your pad sounds. **Kit only** mutes the drum track so you only hear your kit. Auto kick and
+  auto cymbals always play their sound.
+- **Timing:** set your **input offset** first, then a **kick offset** if your kick lands earlier or
+  later than your hands. The end-of-song card measures both and offers an **Apply** button.
+- **Hi-hat pedal:** Plugins → Drums → **Hi-hat pedal hits** chooses whether it's ignored (Rock
+  Band), plays the chart's pedal notes, or works as a second kick.
+- **Full screen stage** and **Miss sound** are switches on Band setup; **Failing** makes a band
+  that drops too low fail the song.
+- Feeling laggy? Turn off plugins you don't use on the Plugins page (it's a simple on/off list).
+
 ## What it adds over upstream feedBack
 
 ### Band play
@@ -30,7 +92,13 @@ Building on Windows: [WINDOWS_BUILD_REQUIREMENTS.md](WINDOWS_BUILD_REQUIREMENTS.
 - Drums, 5-fret and vocal plays count for stats, XP, progression, Career and Achievements (Flawless,
   On Fire, Expert, Pro Kit feats), with per-part bests and run history.
 
-### Drums (Drum Highway 4.9.0)
+### Drums (Drum Highway 4.10)
+
+| | |
+|---|---|
+| ![Hit feedback](docs/screenshots/drums-hit.png) | ![Star power ready](docs/screenshots/drums-star-power-ready.png) |
+| Hit feedback: PERFECT, sparks, score pops | "STAR POWER READY", the streak burning orange at x4 |
+
 - **Rock Band-style scoring** from a YARG drums engine port: multiplier, streak, stars, star power,
   drum fills that activate it, drum solos, accent / ghost bonuses.
 - **Rock Band-style 3D drum track** (and a 2D lane view), keyboard drumming, drum controllers with a
@@ -45,12 +113,15 @@ Building on Windows: [WINDOWS_BUILD_REQUIREMENTS.md](WINDOWS_BUILD_REQUIREMENTS.
 - **Freestyle fills** option (Rock Band): with star power ready a fill becomes a free zone ending on
   the glowing activation note.
 - Difficulties Easy to Expert+, with missing lower levels generated from Expert; pro cymbals or
-  4-lane; auto kick / auto cymbals per difficulty.
+  4-lane; auto kick / auto cymbals per difficulty, which always play their drum sound.
+- **Hi-hat pedal hits**: Ignore (Rock Band), Play pedal notes, or Second kick (left-foot double bass).
 - Timing: hit-window presets, overhit rule (Penalize / Lenient / Ignore), input and kick offsets with
   an early/late meter that suggests them, MIDI arrival-time stamping, direct Windows MIDI (WinMM).
 - Sounds: bundled multi-sampled kits (incl. the DRS and Crocell kits) and General MIDI kits, stereo
   room, velocity curves, hi-hat pedal (CC4) articulation, a MIDI monitor.
 - Split view drums with per-panel difficulty, and public APIs / bus events for band mode.
+
+![Drum settings: fills, hi-hat pedal, Feedback & HUD](docs/screenshots/drums-settings.png)
 
 ### Vocals (Lyrics Karaoke)
 - Rock Band-style vocal scoring: phrases rated by pitch (octave-agnostic), score, multiplier, stars,
@@ -83,6 +154,7 @@ Building on Windows: [WINDOWS_BUILD_REQUIREMENTS.md](WINDOWS_BUILD_REQUIREMENTS.
 - Drum difficulty (Rock Band 0–6 tiers) and generated-levels badges, a sortable Drums column.
 - Songs table view, play queue from songs / albums / artists, native play counts with a Most played
   sort and full-combo badges, Rocksmith 2014 play counts (**Rocksmith Play Counts** plugin).
+- **⟳ Refresh** on the Songs page picks up songs you've added to your DLC folder right away.
 - Guitar Pro import fixes (hammer-ons, slides, ghost notes, fret-hand anchors) and guitar solo
   detection.
 
@@ -100,7 +172,10 @@ Building on Windows: [WINDOWS_BUILD_REQUIREMENTS.md](WINDOWS_BUILD_REQUIREMENTS.
 
 ### App
 - **Plugins page as a plain list** with search and on/off switches (the pedalboard is one click
-  away); turned-off plugins don't load and their sidebar entries hide.
+  away); turned-off plugins don't load and their sidebar entries hide. Keep **3D Drum Highway** on:
+  Auto picks the drum view through it.
+
+![The Plugins page](docs/screenshots/plugins-list.png)
 - **Miss sound** setting (Settings → Gameplay): Off, Clunk, or Clunk + dropout of your part.
 - Visualization pickers list only the main highways; the input setup wizard keeps your instrument.
 - Builds and updates come only from the `mattromano` forks; Mac builds run on `macos-15` and a
