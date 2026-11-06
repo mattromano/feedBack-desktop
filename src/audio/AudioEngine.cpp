@@ -185,6 +185,7 @@ AudioEngine::DeviceMetrics AudioEngine::getDeviceMetrics() const
     m.duplex = duplexMode.load(std::memory_order_relaxed);
     m.inputOverflowCount = inputOverflowCount.load(std::memory_order_relaxed);
     m.outputUnderflowCount = outputUnderflowCount.load(std::memory_order_relaxed);
+    m.outputRingTrimmedFrames = outputRingTrimmedFrames.load(std::memory_order_relaxed);
     // The output ring is only used in split mode. Report 0/0 in duplex so
     // consumers don't think there's a live ring buffer to monitor when
     // there isn't one. Capacity reads-as-zero in duplex matches the
@@ -895,6 +896,9 @@ void AudioEngine::audioOutputAboutToStart(juce::AudioIODevice* device)
         fprintf(stderr, "[diag] audioOutputAboutToStart: dev='%s' sr=%.0f bs=%d\n",
             device->getName().toRawUTF8(), device->getCurrentSampleRate(), bs);
     outputBlockSize.store(bs, std::memory_order_relaxed);
+    // The output callback isn't running yet for this device, so the trim state
+    // (owned by that callback) is safe to reset here.
+    outputRingTrim.prepare(device->getCurrentSampleRate());
 
     if ((int) outputPullScratchL.size() < bs) outputPullScratchL.assign((size_t) bs, 0.0f);
     if ((int) outputPullScratchR.size() < bs) outputPullScratchR.assign((size_t) bs, 0.0f);
@@ -1185,6 +1189,15 @@ void AudioEngine::audioOutputCallback(const float* const* /*inputData*/,
     if (outputRing.catchUpIfLapped(r, w))
         inputOverflowCount.fetch_add(1, std::memory_order_relaxed);
 
+    // Skip frames the last window proved were never needed (pure latency from
+    // input-faster-than-output drift or a startup backlog).
+    if (const uint64_t drop = outputRingTrim.takeDrop(w - r))
+    {
+        r += drop;
+        outputRing.commitRead(r);
+        outputRingTrimmedFrames.fetch_add(drop, std::memory_order_relaxed);
+    }
+
     const uint64_t available = w - r;
     const int      pullCount = juce::jmin(outSamples, (int) available);
 
@@ -1215,6 +1228,7 @@ void AudioEngine::audioOutputCallback(const float* const* /*inputData*/,
         outputUnderflowCount.fetch_add(1, std::memory_order_relaxed);
     }
     outputRing.commitRead(r + (uint64_t) consumeCount);
+    outputRingTrim.observe(available - (uint64_t) consumeCount, numSamples);
 
     buffer.clear();
     const int copyChannels = juce::jmin(numOutputChannels, 2);

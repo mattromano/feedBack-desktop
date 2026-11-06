@@ -24,3 +24,7 @@ add_test(NAME renderer_bus COMMAND renderer_bus_test)
 add_executable(rate_match_test rate_match_test.cpp)
 target_compile_features(rate_match_test PRIVATE cxx_std_17)
 add_test(NAME rate_match COMMAND rate_match_test)
+
+add_executable(ring_residency_trim_test ring_residency_trim_test.cpp)
+target_compile_features(ring_residency_trim_test PRIVATE cxx_std_17)
+add_test(NAME ring_residency_trim COMMAND ring_residency_trim_test)
