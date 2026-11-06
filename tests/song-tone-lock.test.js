@@ -143,3 +143,12 @@ test('a song lock wins over the run lock; picking during a run sets both', () =>
     // The run lock clears when the queue reports inactive.
     assert.match(SCREEN_JS, /'queue:changed'[\s\S]{0,160}if \(d\.active === false\) _queueToneLock = null;/);
 });
+
+test('the picker reloads its list on open, so a tone saved mid-song shows up', () => {
+    const inject = extractFunction(SCREEN_JS, 'injectSongTonePicker');
+    assert.match(inject, /addEventListener\('pointerdown', \(\) => fillSongTonePicker\(sel, false\)\)/);
+    assert.match(inject, /addEventListener\('focus', \(\) => fillSongTonePicker\(sel, false\)\)/);
+    const fill = extractFunction(SCREEN_JS, 'fillSongTonePicker');
+    // An unchanged list never touches the DOM (no flicker / no popup churn).
+    assert.match(fill, /if \(!force && sel\._aeSig === sig\) return;/);
+});

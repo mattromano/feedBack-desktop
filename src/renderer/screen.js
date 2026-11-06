@@ -3367,13 +3367,24 @@ window.__feedBackDesktopAudioHooks = window.__feedBackDesktopAudioHooks || {};
             sel.addEventListener('change', () => {
                 onSongTonePick(sel.value).catch((e) => console.warn('[tone-lock] pick failed:', e));
             });
+            sel.addEventListener('pointerdown', () => fillSongTonePicker(sel, false));
+            sel.addEventListener('focus', () => fillSongTonePicker(sel, false));
         }
         if (!controls.contains(sel)) controls.appendChild(sel);
-        const lockNow = getSongToneLock(getCurrentSongKey()) || '';
+        fillSongTonePicker(sel, true);
+    }
+    // (Re)build the options. On open (pointerdown/focus) it only rewrites when
+    // the preset list changed, so a tone saved mid-song shows up without
+    // reloading the song and an unchanged list never touches the DOM.
+    function fillSongTonePicker(sel, force) {
         const names = Object.keys(getPresets());
+        const sig = names.join('');
+        if (!force && sel._aeSig === sig) return;
+        const keep = force ? (getSongToneLock(getCurrentSongKey()) || '') : sel.value;
+        sel._aeSig = sig;
         sel.innerHTML = `<option value="">Tone: follow song</option>`
             + names.map(n => `<option value="${escHtml(n)}">Tone: ${escHtml(n)}</option>`).join('');
-        sel.value = lockNow;
+        sel.value = names.includes(keep) ? keep : '';
     }
     window._aeInjectSongTonePicker = injectSongTonePicker;
 
