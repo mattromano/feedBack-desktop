@@ -210,6 +210,7 @@ Napi::Value GetDeviceMetrics(const Napi::CallbackInfo& info)
         obj.Set("outputUnderflowCount", 0.0);
         obj.Set("outputRingFillFrames", 0);
         obj.Set("outputRingCapacityFrames", 0);
+        obj.Set("outputRingTrimmedFrames", 0.0);
         return obj;
     }
     const auto m = liveEngine->getDeviceMetrics();
@@ -218,6 +219,7 @@ Napi::Value GetDeviceMetrics(const Napi::CallbackInfo& info)
     obj.Set("outputUnderflowCount", static_cast<double>(m.outputUnderflowCount));
     obj.Set("outputRingFillFrames", m.outputRingFillFrames);
     obj.Set("outputRingCapacityFrames", m.outputRingCapacityFrames);
+    obj.Set("outputRingTrimmedFrames", static_cast<double>(m.outputRingTrimmedFrames));
     return obj;
 }
 

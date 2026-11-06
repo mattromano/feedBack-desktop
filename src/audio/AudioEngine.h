@@ -2,6 +2,7 @@
 #include "SourceChain.h"
 #include "GainSanitize.h"
 #include "engine/PackedStereoRing.h"
+#include "engine/RingResidencyTrim.h"
 #include "engine/EngineState.h"
 #include "engine/RendererBus.h"
 #include "engine/StreamSink.h"
@@ -87,6 +88,9 @@ public:
         // and consumer-facing health metric tick once per frame.
         int outputRingFillFrames = 0;
         int outputRingCapacityFrames = 0;
+        // Frames the residency trim has skipped (split mode) � non-zero means
+        // the ring was holding latency that is now gone.
+        uint64_t outputRingTrimmedFrames = 0;
         bool duplex = true;
     };
 
@@ -488,6 +492,11 @@ private:
     // typical sessions.
     static constexpr int kOutputRingFrames = 4096;
     slopsmith::PackedStereoRing<kOutputRingFrames> outputRing;
+    // Drops frames that sit in outputRing without ever being needed, so clock
+    // drift / startup backlog can't park up to ~85 ms of extra guitar latency
+    // in it (see engine/RingResidencyTrim.h). Output-callback thread only.
+    slopsmith::RingResidencyTrim outputRingTrim;
+    std::atomic<uint64_t> outputRingTrimmedFrames{0};
 
     // ── Renderer-audio bus (see engine/RendererBus.h — moved in TLC phase 2)
     slopsmith::RendererBus rendererBus;
