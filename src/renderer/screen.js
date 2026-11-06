@@ -3219,6 +3219,13 @@ window.__feedBackDesktopAudioHooks = window.__feedBackDesktopAudioHooks || {};
         const hw = window.highway || window._slopsmithHighway;
         if (!hw) return;
 
+        // A whole-song tone lock beats per-tone mappings too.
+        const lockedForSong = getSongToneLock(songKey);
+        if (lockedForSong) {
+            await applySongToneLock(lockedForSong);
+            return;
+        }
+
         // Tone Automation overrides manual tone mappings: it owns the chain
         // while enabled and reacts to song/tone events through its own switcher.
         if (!options.force && window._aeToneAutomation?.isEnabled?.()) {
@@ -3316,7 +3323,61 @@ window.__feedBackDesktopAudioHooks = window.__feedBackDesktopAudioHooks || {};
         closeTonePanel();
     }
 
+    // Whole-song tone picker in the player menu ("Tone & tuning" group via
+    // data-ae-chain). "Follow song" = normal switching (Tone Automation /
+    // mappings); a preset = hold it for this whole song, remembered per song.
+    function playerControlsContainer() {
+        const fb = window.feedBack;
+        const slot = (fb && fb.uiVersion === 'v3' && fb.ui && typeof fb.ui.playerControlSlot === 'function')
+            ? fb.ui.playerControlSlot() : null;
+        return slot || document.getElementById('player-controls');
+    }
+    async function onSongTonePick(pick) {
+        const songKey = getCurrentSongKey();
+        setSongToneLock(songKey, pick || null);
+        if (pick) {
+            await applySongToneLock(pick);
+            return;
+        }
+        // Back to following the song: re-run the normal per-song tone setup.
+        window._toneSwitcher = null;
+        window._toneMappingsDirty = true;
+        const hwNow = window.highway || window._slopsmithHighway;
+        const tcNow = hwNow?.getToneChanges ? hwNow.getToneChanges() : [];
+        const tbNow = hwNow?.getToneBase ? hwNow.getToneBase() : '';
+        if (window._aeToneAutomation?.isEnabled?.()) {
+            const ok = await window._aeToneAutomation.installSwitcherForSong(songKey, tcNow, tbNow);
+            // startToneAutoSwitch lives in a later closure; use its export.
+            if (ok && window._aeStartToneAutoSwitch) window._aeStartToneAutoSwitch();
+        } else {
+            await applyToneMappingsNow(songKey);
+        }
+    }
+    function injectSongTonePicker() {
+        const controls = playerControlsContainer();
+        if (!controls) return;
+        let sel = document.getElementById('ae-song-tone-pick');
+        if (!sel) {
+            sel = document.createElement('select');
+            sel.id = 'ae-song-tone-pick';
+            sel.setAttribute('data-ae-chain', 'song-tone');
+            sel.title = 'Tone for this whole song';
+            sel.className = 'px-2 py-1.5 bg-dark-600 hover:bg-dark-500 rounded-lg text-xs text-gray-300 transition';
+            sel.addEventListener('change', () => {
+                onSongTonePick(sel.value).catch((e) => console.warn('[tone-lock] pick failed:', e));
+            });
+        }
+        if (!controls.contains(sel)) controls.appendChild(sel);
+        const lockNow = getSongToneLock(getCurrentSongKey()) || '';
+        const names = Object.keys(getPresets());
+        sel.innerHTML = `<option value="">Tone: follow song</option>`
+            + names.map(n => `<option value="${escHtml(n)}">Tone: ${escHtml(n)}</option>`).join('');
+        sel.value = lockNow;
+    }
+    window._aeInjectSongTonePicker = injectSongTonePicker;
+
     function injectPlayerToneButton() {
+        injectSongTonePicker();
         const controls = document.getElementById('player-controls');
         if (!shouldShowPlayerChainButton()) {
             removePlayerChainButton();
@@ -3484,6 +3545,7 @@ window.__feedBackDesktopAudioHooks = window.__feedBackDesktopAudioHooks || {};
             <button type="button" onclick="window._closeChainPanel && window._closeChainPanel()" class="text-slate-500 hover:text-white text-lg leading-none">&times;</button>
         </div>`;
 
+
         if (toneNamesOrdered.length === 0) {
             const arrangementName = getCurrentArrangementName();
             const originalNames = await getOriginalToneNames(songKey, arrangementName);
@@ -3608,6 +3670,7 @@ window.__feedBackDesktopAudioHooks = window.__feedBackDesktopAudioHooks || {};
         panel.innerHTML = html;
         player.style.position = 'relative';
         player.appendChild(panel);
+
 
         // Active indicator — shows the live tone state resolved through whichever
         // engine is currently driving `_toneSwitcher` (Tone Automation, manual
@@ -4062,6 +4125,42 @@ window.__feedBackDesktopAudioHooks = window.__feedBackDesktopAudioHooks || {};
         };
     }
 
+    // ── Whole-song tone lock ─────────────────────────────────────────────
+    // "Hard set" one saved preset for an entire song from the in-player Tone
+    // Switching panel: Tone Automation / per-tone mappings are skipped for
+    // that song and its tone changes are ignored. Stored per song key so a
+    // replay keeps the pick; choosing "Follow tone changes" clears it.
+    const SONG_TONE_LOCK_KEY = 'slopsmith-song-tone-lock';
+    function readSongToneLocks() {
+        try {
+            const v = JSON.parse(localStorage.getItem(SONG_TONE_LOCK_KEY) || '{}');
+            return (v && typeof v === 'object' && !Array.isArray(v)) ? v : {};
+        } catch (e) { return {}; }
+    }
+    function getSongToneLock(songKey) {
+        if (!songKey) return null;
+        const name = readSongToneLocks()[songKey];
+        return (typeof name === 'string' && name && getPresets()[name]) ? name : null;
+    }
+    function setSongToneLock(songKey, presetName) {
+        if (!songKey) return;
+        const locks = readSongToneLocks();
+        if (presetName) locks[songKey] = presetName; else delete locks[songKey];
+        try { localStorage.setItem(SONG_TONE_LOCK_KEY, JSON.stringify(locks)); } catch (e) { /* ignore */ }
+    }
+    // Load the locked preset and install a switcher that ignores tone changes.
+    async function applySongToneLock(presetName) {
+        window._toneSwitcher = {
+            activeTone: null,
+            songLock: presetName,
+            switchToTone(name) { this.activeTone = name; },
+        };
+        const ok = await loadPresetByName(presetName);
+        if (ok) console.log('[tone-lock] whole song →', presetName);
+        return ok;
+    }
+    window._aeSongToneLock = { get: getSongToneLock, set: setSongToneLock, apply: applySongToneLock };
+
     async function loadPresetByName(presetName) {
         if (!presetName) return false;
         const presets = getPresets();
@@ -4135,6 +4234,13 @@ window.__feedBackDesktopAudioHooks = window.__feedBackDesktopAudioHooks || {};
     async function installTaSwitcherForSong(songKey, toneChanges, toneBase) {
         const cfg = readTaStore();
         if (!cfg.enabled) return false;
+        // Every Tone Automation install path funnels through here, so the
+        // whole-song lock is enforced in one place.
+        const locked = getSongToneLock(songKey);
+        if (locked) {
+            await applySongToneLock(locked);
+            return true;
+        }
         const switcher = new ToneAutomationSwitcher();
         window._toneSwitcher = switcher;
         const initialInput = String(toneBase || songKey || '').trim();
@@ -4526,7 +4632,7 @@ window.__feedBackDesktopAudioHooks = window.__feedBackDesktopAudioHooks || {};
                 // poll would see activeTone === _lastTone and skip it.
                 if (window._toneSwitcher) {
                     _lastTone = activeTone;
-                    showToneToast(activeTone);
+                    if (!window._toneSwitcher.songLock) showToneToast(activeTone);
                     window._toneSwitcher.switchToTone(activeTone);
                     _toneSwitcherWarned = false;
                 } else if (!_toneSwitcherWarned) {
@@ -4720,6 +4826,14 @@ window.__feedBackDesktopAudioHooks = window.__feedBackDesktopAudioHooks || {};
             }
 
             const songKey = getCurrentSongKey();
+
+            // A whole-song tone lock beats every switching mode.
+            const lockedPreset = getSongToneLock(songKey);
+            if (lockedPreset) {
+                await applySongToneLock(lockedPreset);
+                _preloadedToneCacheKey = null;
+                return;
+            }
 
             // Check for MIDI PC mode
             let allMappingsData = {};
