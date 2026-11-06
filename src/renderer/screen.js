@@ -674,6 +674,27 @@ window.__feedBackDesktopAudioHooks = window.__feedBackDesktopAudioHooks || {};
         );
     }
 
+    // Multi-device drivers (ASIO4ALL most of all) concatenate every enabled
+    // device's inputs into one list, in the driver's own device order. With
+    // the PC's onboard audio enabled for output, its mic pair lands FIRST —
+    // so "Default pair" reads a dead mic and the guitar cable (a later pair)
+    // is never heard: flat meters, no sound. When the first pair is clearly a
+    // mic and a later channel is clearly a guitar/USB input, default to that
+    // channel instead. Anything less clear-cut keeps the old default.
+    // Returns a channel index, or -1 to keep "Default pair".
+    function pickGuitarInputChannel(inputChannels) {
+        const names = Array.isArray(inputChannels) ? inputChannels.map(n => String(n || '')) : [];
+        if (names.length <= 2) return -1;
+        const MIC = /\b(mic|microphone|stereo mix|webcam|camera|headset)\b/i;
+        const GUITAR = /guitar|instrument|\binst\b|hi-?z|rocksmith|real ?tone|\busb\b/i;
+        const firstPair = names.slice(0, 2).filter(n => n.trim());
+        if (firstPair.length === 0 || !firstPair.every(n => MIC.test(n))) return -1;
+        for (let i = 2; i < names.length; i++) {
+            if (GUITAR.test(names[i]) && !MIC.test(names[i])) return i;
+        }
+        return -1;
+    }
+
     function renderInputChannelOptions(inputChannels, preferredValue) {
         const current = hasSettingValue(inputChannelSelect.value) ? inputChannelSelect.value : '-1';
         const names = Array.isArray(inputChannels) ? inputChannels.map(String) : [];
@@ -696,7 +717,14 @@ window.__feedBackDesktopAudioHooks = window.__feedBackDesktopAudioHooks || {};
             });
         }
 
-        replaceSelectOptions(inputChannelSelect, choices, preferredAvailable ? preferred : (currentAvailable ? current : '-1'));
+        let selected = preferredAvailable ? preferred : (currentAvailable ? current : '-1');
+        // An explicit channel pick is always kept; only the default is swapped
+        // for the guitar input when the default would read an onboard mic.
+        if (String(selected) === '-1') {
+            const guitar = pickGuitarInputChannel(names);
+            if (guitar >= 0) selected = String(guitar);
+        }
+        replaceSelectOptions(inputChannelSelect, choices, selected);
     }
 
 
@@ -1004,7 +1032,12 @@ window.__feedBackDesktopAudioHooks = window.__feedBackDesktopAudioHooks || {};
             });
             setSelectValueIfPresent(sampleRateSelect, saved.sampleRate);
             setSelectValueIfPresent(bufferSizeSelect, saved.bufferSize);
-            setSelectValueIfPresent(inputChannelSelect, saved.inputChannel);
+            // refreshDeviceOptions already applied saved.inputChannel. Re-setting
+            // a saved "-1" here would undo its guitar-input default (see
+            // pickGuitarInputChannel), so only explicit channel picks are re-set.
+            if (String(saved.inputChannel) !== '-1') {
+                setSelectValueIfPresent(inputChannelSelect, saved.inputChannel);
+            }
             if (saved.monitorMute !== undefined) {
                 monitorMuteCheckbox.checked = saved.monitorMute;
                 // Push to the engine immediately so the native state matches the
