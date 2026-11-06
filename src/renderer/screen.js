@@ -3335,6 +3335,7 @@ window.__feedBackDesktopAudioHooks = window.__feedBackDesktopAudioHooks || {};
     async function onSongTonePick(pick) {
         const songKey = getCurrentSongKey();
         setSongToneLock(songKey, pick || null);
+        if (playQueueActive()) _queueToneLock = pick || null;
         if (pick) {
             await applySongToneLock(pick);
             return;
@@ -4137,10 +4138,30 @@ window.__feedBackDesktopAudioHooks = window.__feedBackDesktopAudioHooks || {};
             return (v && typeof v === 'object' && !Array.isArray(v)) ? v : {};
         } catch (e) { return {}; }
     }
+    // A pick made while a queue / album playthrough is running holds for the
+    // rest of that run (not just the song it was picked on). Cleared by
+    // picking "follow song", or when the queue ends.
+    let _queueToneLock = null;
+    function playQueueActive() {
+        const q = window.feedBack && window.feedBack.playQueue;
+        try { return !!(q && typeof q.active === 'function' && q.active()); } catch (e) { return false; }
+    }
+    try {
+        window.feedBack?.on?.('queue:changed', (e) => {
+            const d = (e && e.detail) || e || {};
+            if (d.active === false) _queueToneLock = null;
+        });
+    } catch (e) { /* host without the event bus */ }
     function getSongToneLock(songKey) {
         if (!songKey) return null;
+        const presets = getPresets();
         const name = readSongToneLocks()[songKey];
-        return (typeof name === 'string' && name && getPresets()[name]) ? name : null;
+        if (typeof name === 'string' && name && presets[name]) return name;
+        if (_queueToneLock) {
+            if (playQueueActive() && presets[_queueToneLock]) return _queueToneLock;
+            _queueToneLock = null;
+        }
+        return null;
     }
     function setSongToneLock(songKey, presetName) {
         if (!songKey) return;

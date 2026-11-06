@@ -24,11 +24,12 @@ function extractFunction(src, name) {
     return src.slice(start, i);
 }
 
-function harness(presets) {
+function harness(presets, { queue } = {}) {
     const store = {};
     const loads = [];
+    const q = { on: !!queue };
     const ctx = {
-        window: {},
+        window: { feedBack: { playQueue: { active: () => q.on } } },
         console: { log() {} },
         localStorage: {
             getItem: (k) => (k in store ? store[k] : null),
@@ -39,14 +40,17 @@ function harness(presets) {
     };
     const code = [
         "const SONG_TONE_LOCK_KEY = 'slopsmith-song-tone-lock';",
+        'let _queueToneLock = null;',
+        extractFunction(SCREEN_JS, 'playQueueActive'),
         extractFunction(SCREEN_JS, 'readSongToneLocks'),
         extractFunction(SCREEN_JS, 'getSongToneLock'),
         extractFunction(SCREEN_JS, 'setSongToneLock'),
         extractFunction(SCREEN_JS, 'applySongToneLock'),
         'this.get = getSongToneLock; this.set = setSongToneLock; this.apply = applySongToneLock;',
+        'this.setQueueLock = (v) => { _queueToneLock = v; }; this.queueLock = () => _queueToneLock;',
     ].join('\n');
     vm.runInNewContext(code, ctx);
-    return { ctx, store, loads };
+    return { ctx, store, loads, q };
 }
 
 const PRESETS = { 'Main Lead': {}, 'Auto · Lead (Mesa Mark V)': {} };
@@ -117,4 +121,25 @@ test('every switching path honours the lock', () => {
     // _preloadedToneCacheKey (a ReferenceError there broke "follow song").
     const pick = extractFunction(SCREEN_JS, 'onSongTonePick');
     assert.doesNotMatch(pick, /_preloadedToneCacheKey|[^.]startToneAutoSwitch\(/);
+});
+
+test('a pick during a queue / album playthrough holds for the next songs', () => {
+    const { ctx, q } = harness(PRESETS, { queue: true });
+    ctx.setQueueLock('Main Lead');            // what onSongTonePick does mid-queue
+    assert.equal(ctx.get('next-song'), 'Main Lead', 'the next song in the run keeps the pick');
+    q.on = false;                              // the queue ended
+    assert.equal(ctx.get('later-song'), null, 'songs after the run follow their tones again');
+    assert.equal(ctx.queueLock(), null, 'and the run lock is cleared');
+});
+
+test('a song lock wins over the run lock; picking during a run sets both', () => {
+    const { ctx } = harness(PRESETS, { queue: true });
+    ctx.set('song-a', 'Auto · Lead (Mesa Mark V)');
+    ctx.setQueueLock('Main Lead');
+    assert.equal(ctx.get('song-a'), 'Auto · Lead (Mesa Mark V)');
+    assert.equal(ctx.get('song-b'), 'Main Lead');
+    const pick = extractFunction(SCREEN_JS, 'onSongTonePick');
+    assert.match(pick, /if \(playQueueActive\(\)\) _queueToneLock = pick \|\| null;/);
+    // The run lock clears when the queue reports inactive.
+    assert.match(SCREEN_JS, /'queue:changed'[\s\S]{0,160}if \(d\.active === false\) _queueToneLock = null;/);
 });
