@@ -106,7 +106,7 @@ test('the picker lives in the player menu, in the Tone & tuning group', () => {
     const inject = extractFunction(SCREEN_JS, 'injectSongTonePicker');
     assert.match(inject, /sel\.id = 'ae-song-tone-pick'/);
     assert.match(inject, /setAttribute\('data-ae-chain'/, 'data-ae-chain puts it in the "Tone & tuning" group');
-    assert.match(inject, /Tone: follow song/);
+    assert.match(extractFunction(SCREEN_JS, 'fillSongTonePicker'), /Tone: follow song/);
     // Injected with the chain button on every song, regardless of provider.
     const btn = extractFunction(SCREEN_JS, 'injectPlayerToneButton');
     assert.ok(btn.indexOf('injectSongTonePicker();') < btn.indexOf('shouldShowPlayerChainButton()'));
