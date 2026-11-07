@@ -4450,6 +4450,9 @@ window.__feedBackDesktopAudioHooks = window.__feedBackDesktopAudioHooks || {};
     const normalizeSongKey = window._aeNormalizeSongKey || ((raw) => String(raw || '').replace(/\\/g, '/').trim());
     const getCurrentSongKey = window._aeGetCurrentSongKey || (() => normalizeSongKey(window._slopsmithPlaybackSettingsKey || window._currentSongFile || window._slopsmithSongKey || ''));
     const getToneChangeTime = window._aeGetToneChangeTime || ((tc) => { const t = tc?.t ?? tc?.time ?? tc?.timestamp ?? tc?.at; return Number.isFinite(t) ? t : Infinity; });
+    // Bypass-mode preload reads preset item lists; the helper lives in the first IIFE (a bare
+    // getPresetItems() here threw ReferenceError, caught by the renderer-iife-scope test).
+    const getPresetItems = (preset) => (Array.isArray(preset?.items) ? preset.items : []);
 
     function getTonePreloadCacheKey() {
         const sk = getCurrentSongKey();
@@ -4859,10 +4862,13 @@ window.__feedBackDesktopAudioHooks = window.__feedBackDesktopAudioHooks || {};
 
             const songKey = getCurrentSongKey();
 
-            // A whole-song tone lock beats every switching mode.
-            const lockedPreset = getSongToneLock(songKey);
+            // A whole-song tone lock beats every switching mode. The lock helpers live in the
+            // first IIFE; this preload runs in the second, so reach them through their export
+            // (a bare call threw ReferenceError on every song — issue #12).
+            const songLock = window._aeSongToneLock;
+            const lockedPreset = songLock && typeof songLock.get === 'function' ? songLock.get(songKey) : null;
             if (lockedPreset) {
-                await applySongToneLock(lockedPreset);
+                await songLock.apply(lockedPreset);
                 _preloadedToneCacheKey = null;
                 return;
             }

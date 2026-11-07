@@ -95,7 +95,7 @@ test('applying a lock loads the preset and ignores later tone changes', async ()
 });
 
 test('song start checks the lock before any switching mode', () => {
-    const lockAt = SCREEN_JS.indexOf('const lockedPreset = getSongToneLock(songKey);');
+    const lockAt = SCREEN_JS.indexOf('const lockedPreset = songLock && typeof songLock.get');
     const midiAt = SCREEN_JS.indexOf('// Check for MIDI PC mode', lockAt);
     const taAt = SCREEN_JS.indexOf('window._aeToneAutomation.installSwitcherForSong(', lockAt);
     assert.ok(lockAt > 0 && midiAt > lockAt && taAt > lockAt);
