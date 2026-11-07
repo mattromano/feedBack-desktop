@@ -1010,6 +1010,31 @@ export function initAudioBridge(): void {
         return audio.getRendererBusMetrics();
     });
 
+    // ── Song bus: the song alone, frame-stamped, so the engine can report the
+    // song frame being heard (see AudioEngine::setSongBus). Same push model.
+    ipcMain.handle('audio:setSongBus', (_event, enabled: unknown, gain: unknown) => {
+        if (audio && typeof audio.setSongBus === 'function') {
+            const g = typeof gain === 'number' && Number.isFinite(gain) ? gain : 1.0;
+            audio.setSongBus(enabled === true, g);
+        }
+    });
+    ipcMain.on('audio:pushSongAudio', (_event, chunk: unknown, sourceRate: unknown, startFrame: unknown) => {
+        if (audio && typeof audio.pushSongAudio === 'function'
+            && chunk instanceof Float32Array && chunk.length >= 2
+            && typeof startFrame === 'number' && Number.isFinite(startFrame)) {
+            const rate = typeof sourceRate === 'number' && Number.isFinite(sourceRate) ? sourceRate : 0;
+            audio.pushSongAudio(chunk, rate, startFrame);
+        }
+    });
+    ipcMain.handle('audio:getSongBusClock', () => {
+        if (!audio || typeof audio.getSongBusClock !== 'function') return null;
+        return audio.getSongBusClock();
+    });
+    ipcMain.handle('audio:getSongBusMetrics', () => {
+        if (!audio || typeof audio.getSongBusMetrics !== 'function') return null;
+        return audio.getSongBusMetrics();
+    });
+
     ipcMain.handle('audio:getStreamSinkLevel', () => {
         if (!audio || typeof audio.getStreamSinkLevel !== 'function') return 0;
         return audio.getStreamSinkLevel();

@@ -23,6 +23,10 @@ void SourceChain::prepare(double sr, int blockSize)
     inputFrameRingWriteIndex.store(0, std::memory_order_relaxed);
     for (auto& slot : inputFrameRing)
         slot.store(0.0f, std::memory_order_relaxed);
+    // No capture stamp until the first block of this run lands.
+    inputStampSeq.store(0, std::memory_order_relaxed);
+    inputStampIndex.store(0, std::memory_order_relaxed);
+    inputStampWallMs.store(0.0, std::memory_order_relaxed);
 
     rawAudioRingWriteIndex.store(0, std::memory_order_relaxed);
     for (auto& slot : rawAudioRing)
@@ -61,6 +65,9 @@ void SourceChain::processBlock(const float* const* inputData, int numInputChanne
                                juce::AudioBuffer<float>& buffer, int effectiveOutputChannels,
                                int numSamples) noexcept
 {
+    // Wall time this block reached us — taken first, before any DSP, so the
+    // verifier can place every captured sample in song time (getInputStamp).
+    const double blockStartMs = juce::Time::getMillisecondCounterHiRes();
     const float inGain = inputGain.load();
     const int selectedCh = selectedInputChannel.load();
 
@@ -224,6 +231,14 @@ void SourceChain::processBlock(const float* const* inputData, int numInputChanne
             inputFrameRing[(w + (uint64_t) i) & (uint64_t) kMask]
                 .store(monoSource[i], std::memory_order_relaxed);
         inputFrameRingWriteIndex.store(w + (uint64_t) numSamples, std::memory_order_release);
+
+        // Publish the capture stamp for this block (seqlock, single writer).
+        const uint32_t seq = inputStampSeq.load(std::memory_order_relaxed);
+        inputStampSeq.store(seq + 1, std::memory_order_relaxed);
+        std::atomic_thread_fence(std::memory_order_release);
+        inputStampIndex.store(w + (uint64_t) numSamples, std::memory_order_relaxed);
+        inputStampWallMs.store(blockStartMs, std::memory_order_relaxed);
+        inputStampSeq.store(seq + 2, std::memory_order_release);
     }
 
     noiseGate.processBlock(buffer);
@@ -360,6 +375,24 @@ std::vector<float> SourceChain::getInputFrame(int numSamples) const
         out[(size_t) i]
             = inputFrameRing[(start + (uint64_t) i) & kMask].load(std::memory_order_relaxed);
     return out;
+}
+
+bool SourceChain::getInputStamp(uint64_t& ringIndex, double& wallMs) const
+{
+    for (int attempt = 0; attempt < 8; ++attempt)
+    {
+        const uint32_t s1 = inputStampSeq.load(std::memory_order_acquire);
+        if (s1 == 0) return false;          // nothing captured this run yet
+        if (s1 & 1u) continue;              // writer mid-update
+        const uint64_t idx = inputStampIndex.load(std::memory_order_relaxed);
+        const double ms = inputStampWallMs.load(std::memory_order_relaxed);
+        std::atomic_thread_fence(std::memory_order_acquire);
+        if (inputStampSeq.load(std::memory_order_relaxed) != s1) continue;
+        ringIndex = idx;
+        wallMs = ms;
+        return true;
+    }
+    return false;
 }
 
 uint64_t SourceChain::getInputSince(uint64_t fromIndex, std::vector<float>& out) const

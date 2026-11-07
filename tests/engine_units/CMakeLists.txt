@@ -28,3 +28,7 @@ add_test(NAME rate_match COMMAND rate_match_test)
 add_executable(ring_residency_trim_test ring_residency_trim_test.cpp)
 target_compile_features(ring_residency_trim_test PRIVATE cxx_std_17)
 add_test(NAME ring_residency_trim COMMAND ring_residency_trim_test)
+
+add_executable(playhead_model_test playhead_model_test.cpp)
+target_compile_features(playhead_model_test PRIVATE cxx_std_17)
+add_test(NAME playhead_model COMMAND playhead_model_test)

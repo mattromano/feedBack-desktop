@@ -9,6 +9,7 @@
 #include <cmath>
 #include <cstdio>
 #include <limits>
+#include <memory>
 #include <vector>
 
 using slopsmith::RendererBus;
@@ -220,6 +221,123 @@ static void testRejectsUnusableRates()
     assert(bus.metrics().pushedFrames > 0);
 }
 
+// ── Heard clock (song bus) ──────────────────────────────────────────────────
+// Each anchored push ties its first ring frame to a producer frame; each
+// stamped pull publishes the producer frame that starts the block.
+
+// Equal rates: block start frame == the producer frame of that ring frame.
+static void testHeardClockEqualRate()
+{
+    auto busOwner = std::make_unique<RendererBus>();   // ~0.5 MB: keep it off the stack
+    RendererBus& bus = *busOwner;
+    bus.setEnabled(true, 1.0f);
+    assert(!bus.heardClock().valid);                 // nothing pulled yet
+    // Producer frames 1000.. in two contiguous chunks of 480.
+    const auto c1 = rampChunk(480, 0.0f, 1.0f);
+    const auto c2 = rampChunk(480, 480.0f, 1.0f);
+    assert(bus.push(c1.data(), 480, 48000.0, 48000.0, 1000.0));
+    assert(bus.push(c2.data(), 480, 48000.0, 48000.0, 1480.0));
+    std::vector<float> dl(256), dr(256);
+    assert(bus.pull(dl.data(), dr.data(), 256, 5000.0) == 256);
+    auto h = bus.heardClock();
+    assert(h.valid);
+    // Ring frame 0 holds producer frame 1000 (chunk position 0).
+    assert(std::fabs(h.sourceFrame - 1000.0) < 1e-9);
+    assert(h.wallMs == 5000.0 && h.srcPerDeviceFrame == 1.0);
+    // The block's samples are the producer's frames 1000.. (ramp value i).
+    assert(dl[0] == 0.0f && dl[255] == 255.0f);
+    assert(bus.pull(dl.data(), dr.data(), 256, 5005.3) == 256);
+    h = bus.heardClock();
+    assert(std::fabs(h.sourceFrame - 1256.0) < 1e-9);
+    // Third block crosses into chunk 2's anchor (its first ring frame is the
+    // carried last frame of chunk 1 = producer 1479): still contiguous.
+    assert(bus.pull(dl.data(), dr.data(), 256, 5010.6) == 256);
+    h = bus.heardClock();
+    assert(std::fabs(h.sourceFrame - 1512.0) < 1e-9);
+    // And the audio really is producer frame 1512 (ramp value 512).
+    assert(dl[0] == 512.0f);
+}
+
+// A gap in producer frames (dropped message) is honoured exactly from the
+// first ring frame of the new anchor on.
+static void testHeardClockSourceJump()
+{
+    auto busOwner = std::make_unique<RendererBus>();   // ~0.5 MB: keep it off the stack
+    RendererBus& bus = *busOwner;
+    bus.setEnabled(true, 1.0f);
+    const auto c = rampChunk(512, 0.0f, 1.0f);
+    assert(bus.push(c.data(), 512, 48000.0, 48000.0, 0.0));
+    assert(bus.push(c.data(), 512, 48000.0, 48000.0, 10000.0));   // jumped
+    std::vector<float> dl(512), dr(512);
+    assert(bus.pull(dl.data(), dr.data(), 512, 1.0) == 512);
+    assert(std::fabs(bus.heardClock().sourceFrame - 0.0) < 1e-9);
+    // Chunk 1 produced ring frames 0..510 (511 frames: the last frame is the
+    // carry), so ring 511 is chunk 2's carry slot, anchored at 10000 - 1.
+    assert(bus.pull(dl.data(), dr.data(), 256, 2.0) == 256);
+    assert(std::fabs(bus.heardClock().sourceFrame - (10000.0 - 1.0 + 1.0)) < 1e-9);
+}
+
+// Underflow / disable invalidate the clock — nothing of the song is heard.
+static void testHeardClockInvalidOnGap()
+{
+    auto busOwner = std::make_unique<RendererBus>();   // ~0.5 MB: keep it off the stack
+    RendererBus& bus = *busOwner;
+    bus.setEnabled(true, 1.0f);
+    const auto c = rampChunk(600, 0.0f, 1.0f);
+    assert(bus.push(c.data(), 600, 48000.0, 48000.0, 0.0));
+    std::vector<float> dl(512), dr(512);
+    assert(bus.pull(dl.data(), dr.data(), 512, 1.0) == 512);
+    assert(bus.heardClock().valid);
+    assert(bus.pull(dl.data(), dr.data(), 512, 2.0) == 0);       // underflow
+    assert(!bus.heardClock().valid);
+    assert(bus.push(c.data(), 600, 48000.0, 48000.0, 600.0));
+    assert(bus.pull(dl.data(), dr.data(), 512, 3.0) == 512);
+    assert(bus.heardClock().valid);
+    bus.setEnabled(false, 0.0f);
+    assert(bus.pull(dl.data(), dr.data(), 512, 4.0) == 0);
+    assert(!bus.heardClock().valid);
+}
+
+// Unanchored pushes (the app-audio bus) never produce a clock.
+static void testHeardClockNeedsAnchor()
+{
+    auto busOwner = std::make_unique<RendererBus>();   // ~0.5 MB: keep it off the stack
+    RendererBus& bus = *busOwner;
+    bus.setEnabled(true, 1.0f);
+    const auto c = rampChunk(1024, 0.0f, 1.0f);
+    assert(bus.push(c.data(), 1024, 48000.0, 48000.0));
+    std::vector<float> dl(512), dr(512);
+    assert(bus.pull(dl.data(), dr.data(), 512, 1.0) == 512);
+    assert(!bus.heardClock().valid);
+    // An unstamped pull never touches the clock either.
+    auto b2Owner = std::make_unique<RendererBus>();
+    RendererBus& b2 = *b2Owner;
+    b2.setEnabled(true, 1.0f);
+    assert(b2.push(c.data(), 1024, 48000.0, 48000.0, 0.0));
+    assert(b2.pull(dl.data(), dr.data(), 512) == 512);
+    assert(!b2.heardClock().valid);
+}
+
+// 44.1 k producer into a 48 k device: producer frames advance by 44100/48000
+// per device frame, and the published step says so.
+static void testHeardClockResampled()
+{
+    auto busOwner = std::make_unique<RendererBus>();   // ~0.5 MB: keep it off the stack
+    RendererBus& bus = *busOwner;
+    bus.setEnabled(true, 1.0f);
+    const auto c = rampChunk(2205, 0.0f, 1.0f);   // ~2400 ring frames: under the fill clamp
+    assert(bus.push(c.data(), 2205, 44100.0, 48000.0, 0.0));
+    std::vector<float> dl(480), dr(480);
+    assert(bus.pull(dl.data(), dr.data(), 480, 1.0) == 480);
+    assert(bus.pull(dl.data(), dr.data(), 480, 11.0) == 480);
+    const auto h = bus.heardClock();
+    assert(h.valid);
+    assert(std::fabs(h.srcPerDeviceFrame - 44100.0 / 48000.0) < 1e-12);
+    assert(std::fabs(h.sourceFrame - 480.0 * 44100.0 / 48000.0) < 1e-6);
+    // The audio at that block start is that producer position (ramp = frame).
+    assert(std::fabs(dl[0] - (float) (480.0 * 44100.0 / 48000.0)) < 1e-3);
+}
+
 int main()
 {
     testEqualRateBitExact();
@@ -232,6 +350,11 @@ int main()
     testGainApplied();
     testFlushOnDisable();
     testFlushSparesPostReEnableAudio();
+    testHeardClockEqualRate();
+    testHeardClockSourceJump();
+    testHeardClockInvalidOnGap();
+    testHeardClockNeedsAnchor();
+    testHeardClockResampled();
     std::puts("renderer_bus: all cases passed");
     return 0;
 }

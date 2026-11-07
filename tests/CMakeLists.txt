@@ -15,6 +15,7 @@ endif()
 add_subdirectory(audio_sanitize)
 add_subdirectory(engine_units)
 add_subdirectory(live_pitch)
+add_subdirectory(onset_lag)
 
 # Note: enable_testing() lives in the top-level CMakeLists.txt — calling it
 # only here would register tests in build/tests/CTestTestfile.cmake but

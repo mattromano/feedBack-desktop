@@ -51,6 +51,7 @@ public:
     bool isPlaying() const { return playing.load(); }
     double getPosition() const { return cachedPosition.load(); }
     double getDuration() const { return cachedDuration.load(); }
+    double getSpeed() const { return speed.load(); }
 
     // Re-prepare the transport + stretcher + buffers at a (new) device format.
     // Call from the about-to-start hook that owns backing playback (duplex:

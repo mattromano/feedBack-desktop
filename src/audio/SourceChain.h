@@ -217,6 +217,15 @@ public:
     std::vector<float> getInputFrame(int numSamples = 4096) const override;
     uint64_t getInputSince(uint64_t fromIndex, std::vector<float>& out) const override;
     double getCurrentSampleRate() const override { return sampleRate.load(std::memory_order_relaxed); }
+    bool getInputStamp(uint64_t& ringIndex, double& wallMs) const override;
+    double getCaptureLatencySec() const override { return captureLatencySec.load(std::memory_order_relaxed); }
+
+    // Device capture latency for verifier onset timing (see InputRingReader).
+    // Set from the device's reported input latency on every device start.
+    void setCaptureLatencySec(double seconds)
+    {
+        captureLatencySec.store(seconds > 0.0 && seconds < 1.0 ? seconds : 0.0, std::memory_order_relaxed);
+    }
 
 private:
     // ML-backed chord scoring against the MlNoteDetector's active-pitch set.
@@ -264,6 +273,13 @@ private:
                   "kInputFrameRingCapacity must be a power of two");
     std::array<std::atomic<float>, kInputFrameRingCapacity> inputFrameRing{};
     std::atomic<uint64_t> inputFrameRingWriteIndex{0};
+
+    // Capture stamp of the newest block (seqlock: odd seq = write in progress).
+    // Written by this source's device callback only; read by the verifier.
+    std::atomic<uint32_t> inputStampSeq{0};
+    std::atomic<uint64_t> inputStampIndex{0};
+    std::atomic<double>   inputStampWallMs{0.0};
+    std::atomic<double>   captureLatencySec{0.0};
 
     static constexpr int kRawAudioRingCapacity = 16384;
     static_assert((kRawAudioRingCapacity & (kRawAudioRingCapacity - 1)) == 0,

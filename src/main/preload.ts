@@ -404,6 +404,21 @@ const feedBackDesktopApi = {
             pushedFrames: number; consumedFrames: number;
             underflowCount: number; overflowCount: number;
         } | null> => ipcRenderer.invoke('audio:getRendererBusMetrics'),
+        // Song bus (song audio only, frame-stamped): feeds the engine the
+        // stems graph directly and reports which song frame is being heard.
+        setSongBus: (enabled: boolean, gain: number): Promise<void> =>
+            ipcRenderer.invoke('audio:setSongBus', enabled, gain),
+        pushSongAudio: (interleavedLR: Float32Array, sourceRate: number, startFrame: number): void =>
+            ipcRenderer.send('audio:pushSongAudio', interleavedLR, sourceRate, startFrame),
+        getSongBusClock: (): Promise<{
+            valid: boolean; heardSourceFrame?: number; sourceFramesPerSecond?: number;
+            outputLatencyMs?: number; fillFrames?: number;
+        } | null> => ipcRenderer.invoke('audio:getSongBusClock'),
+        getSongBusMetrics: (): Promise<{
+            enabled: boolean; fillFrames: number; capacityFrames: number;
+            pushedFrames: number; consumedFrames: number;
+            underflowCount: number; overflowCount: number;
+        } | null> => ipcRenderer.invoke('audio:getSongBusMetrics'),
         getStreamSinkLevel: (): Promise<number> => ipcRenderer.invoke('audio:getStreamSinkLevel'),
         isStreamOutputActive: (): Promise<boolean> => ipcRenderer.invoke('audio:isStreamOutputActive'),
         getStreamUnderflowCount: (): Promise<number> => ipcRenderer.invoke('audio:getStreamUnderflowCount'),

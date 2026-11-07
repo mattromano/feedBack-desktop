@@ -843,6 +843,11 @@ void AudioEngine::audioDeviceAboutToStart(juce::AudioIODevice* device)
     if (streamGuitarScratch.getNumSamples() < streamScratchCap) streamGuitarScratch.setSize(2, streamScratchCap, false, false, true);
     streamSink.prepareProducerScratch();
     if (rendererBusPullScratch.getNumSamples() < streamScratchCap) rendererBusPullScratch.setSize(2, streamScratchCap, false, false, true);
+    if (songBusPullScratch.getNumSamples() < streamScratchCap) songBusPullScratch.setSize(2, streamScratchCap, false, false, true);
+    // Duplex: this device is the output too - its output latency places the
+    // heard clock. Split mode records the output device's in audioOutputAboutToStart.
+    if (duplexMode.load(std::memory_order_relaxed))
+        outputLatencySamples.store(device->getOutputLatencyInSamples(), std::memory_order_relaxed);
 
     // Prepare each ACTIVE PRIMARY-device source's DSP and reset its rings for a
     // clean cold start. Inactive pooled chains stay unprepared (no threads). EXTRA-
@@ -850,6 +855,22 @@ void AudioEngine::audioDeviceAboutToStart(juce::AudioIODevice* device)
     // with THAT device's format — a primary restart must not clobber them with the
     // primary's sample rate / block size (they run on a different hardware clock).
     pool.forEachActive([&](SourceChain& s) { if (s.getDeviceKey() == 0) s.prepare(sr, bs); });
+
+    // Capture latency for verifier onset timing: how long before its block's
+    // callback the newest sample left the converter. Drivers report input
+    // latency for a block's FIRST sample (ASIO by spec, JUCE's WASAPI as
+    // stream latency + buffer), so subtract one buffer. Set on EVERY pooled
+    // chain (atomic store, any thread) so a source added later inherits it;
+    // an extra-device source adds its (extra − primary) delta on top via the
+    // verifier auto offset. Guitar timing then holds across drivers and
+    // buffer sizes instead of shifting with them.
+    {
+        const int inLat = device->getInputLatencyInSamples();
+        const double capSec = (sr > 0.0) ? (double) juce::jmax(0, inLat - bs) / sr : 0.0;
+        pool.forEach([&](SourceChain& s) { s.setCaptureLatencySec(capSec); });
+        if (slopsmith_vst_trace::isEnabled())
+            fprintf(stderr, "[diag] capture latency: in=%d bs=%d -> %.2f ms\n", inLat, bs, capSec * 1000.0);
+    }
 
     // Split mode preps the backing stretcher in audioOutputAboutToStart
     // instead — that callback owns the device the backing audio actually
@@ -896,6 +917,7 @@ void AudioEngine::audioOutputAboutToStart(juce::AudioIODevice* device)
         fprintf(stderr, "[diag] audioOutputAboutToStart: dev='%s' sr=%.0f bs=%d\n",
             device->getName().toRawUTF8(), device->getCurrentSampleRate(), bs);
     outputBlockSize.store(bs, std::memory_order_relaxed);
+    outputLatencySamples.store(device->getOutputLatencyInSamples(), std::memory_order_relaxed);
     // The output callback isn't running yet for this device, so the trim state
     // (owned by that callback) is safe to reset here.
     outputRingTrim.prepare(device->getCurrentSampleRate());
@@ -976,6 +998,9 @@ void AudioEngine::audioDeviceIOCallbackWithContext(
     float* const* outputData, int numOutputChannels,
     int numSamples, const juce::AudioIODeviceCallbackContext&)
 {
+    // Heard-clock reference for the song bus (duplex: this callback is the output).
+    if (duplexMode.load(std::memory_order_relaxed))
+        outputCallbackStartMs.store(juce::Time::getMillisecondCounterHiRes(), std::memory_order_relaxed);
     // Flush denormals (FTZ/DAZ) for the ENTIRE realtime callback. The chain is
     // full of IIR state (NAM, cab IRs, VST amps/EQ/comp); after each note that
     // state decays toward zero and lands in the denormal range, where every op
@@ -1069,6 +1094,7 @@ void AudioEngine::audioDeviceIOCallbackWithContext(
         if (sl.isLocked() && backing.readyLocked())
         {
             const int outSamples = backing.renderBlockLocked(numSamples);
+            publishBackingStamp(outSamples);
             const float bVol = backingVolume.load();
             streamBackingFrames = outSamples; streamBackingVol = bVol; streamBackingOn = true;
             const int mixChannels = juce::jmin(numOutputChannels, 2);
@@ -1158,6 +1184,7 @@ void AudioEngine::audioOutputCallback(const float* const* /*inputData*/,
                                       int numOutputChannels,
                                       int numSamples)
 {
+    outputCallbackStartMs.store(juce::Time::getMillisecondCounterHiRes(), std::memory_order_relaxed);
     // Split-mode output clock: this callback renders the backing track (phase
     // vocoder + loudness leveler) and mixes it with the chain output. Those
     // carry IIR/decay state too, so flush denormals here as well — the primary
@@ -1281,6 +1308,7 @@ void AudioEngine::audioOutputCallback(const float* const* /*inputData*/,
         {
             // Shared with the duplex path so the two callbacks can't drift.
             const int backingOut = backing.renderBlockLocked(numSamples);
+            publishBackingStamp(backingOut);
             const float bVol = backingVolume.load();
             streamBackingFrames = backingOut; streamBackingVol = bVol; streamBackingOn = true;
             // RMS, computed identically to the duplex path so getBackingLevel()
@@ -1355,7 +1383,100 @@ int AudioEngine::pullRendererBus(juce::AudioBuffer<float>& dest, int numSamples)
     // Cold start before about-to-start sized the scratch — skip, never alloc
     // on the RT thread (same rule as the stream scratches).
     if (dest.getNumSamples() < numSamples || dest.getNumChannels() < 2) return 0;
-    return rendererBus.pull(dest.getWritePointer(0), dest.getWritePointer(1), numSamples);
+    const int appFrames = rendererBus.pull(dest.getWritePointer(0), dest.getWritePointer(1), numSamples);
+    // The song bus mixes into the same block (both are pulled exactly once
+    // per output block). It stamps the heard clock with this callback's start.
+    if (songBusPullScratch.getNumSamples() < numSamples || songBusPullScratch.getNumChannels() < 2)
+        return appFrames;
+    const int songFrames = songBus.pull(songBusPullScratch.getWritePointer(0),
+                                        songBusPullScratch.getWritePointer(1),
+                                        numSamples, outputCallbackStartMs.load(std::memory_order_relaxed));
+    if (songFrames <= 0) return appFrames;
+    for (int ch = 0; ch < 2; ++ch)
+    {
+        if (appFrames > 0) dest.addFrom(ch, 0, songBusPullScratch, ch, 0, songFrames);
+        else               dest.copyFrom(ch, 0, songBusPullScratch, ch, 0, songFrames);
+    }
+    return numSamples;
+}
+
+void AudioEngine::publishBackingStamp(int outSamples)
+{
+    const double sr = currentSampleRate.load(std::memory_order_relaxed);
+    const uint32_t seq = backingStampSeq.load(std::memory_order_relaxed);
+    backingStampSeq.store(seq + 1, std::memory_order_relaxed);
+    std::atomic_thread_fence(std::memory_order_release);
+    backingStampPos.store(backing.getPosition(), std::memory_order_relaxed);
+    backingStampBlockSec.store(sr > 0.0 ? (double) outSamples / sr : 0.0, std::memory_order_relaxed);
+    backingStampMs.store(outputCallbackStartMs.load(std::memory_order_relaxed), std::memory_order_relaxed);
+    backingStampRate.store(backing.getSpeed(), std::memory_order_relaxed);
+    backingStampSeq.store(seq + 2, std::memory_order_release);
+}
+
+double AudioEngine::getBackingPosition() const
+{
+    const double raw = backing.getPosition();
+    if (!backing.isPlaying()) return raw;
+    double pos = 0.0, blockSec = 0.0, ms = 0.0, rate = 1.0;
+    bool ok = false;
+    for (int attempt = 0; attempt < 8 && !ok; ++attempt)
+    {
+        const uint32_t s1 = backingStampSeq.load(std::memory_order_acquire);
+        if (s1 == 0 || (s1 & 1u)) continue;
+        pos = backingStampPos.load(std::memory_order_relaxed);
+        blockSec = backingStampBlockSec.load(std::memory_order_relaxed);
+        ms = backingStampMs.load(std::memory_order_relaxed);
+        rate = backingStampRate.load(std::memory_order_relaxed);
+        std::atomic_thread_fence(std::memory_order_acquire);
+        ok = backingStampSeq.load(std::memory_order_relaxed) == s1;
+    }
+    const double sr = currentSampleRate.load(std::memory_order_relaxed);
+    const double nowMs = juce::Time::getMillisecondCounterHiRes();
+    if (!ok || !(sr > 0.0) || nowMs - ms > 250.0 || !(rate > 0.0)) return raw;
+    const double outLatSec = (double) outputLatencySamples.load(std::memory_order_relaxed) / sr;
+    const double heard = (pos - blockSec * rate) + ((nowMs - ms) / 1000.0 - outLatSec) * rate;
+    return juce::jmax(0.0, heard);
+}
+
+bool AudioEngine::pushSongAudio(const float* interleavedLR, int frames, double sourceRate, double sourceStartFrame)
+{
+    return songBus.push(interleavedLR, frames, sourceRate, getCurrentSampleRate(), sourceStartFrame);
+}
+
+AudioEngine::RendererBusMetrics AudioEngine::getSongBusMetrics() const
+{
+    const auto bm = songBus.metrics();
+    RendererBusMetrics m;
+    m.pushedFrames   = bm.pushedFrames;
+    m.consumedFrames = bm.consumedFrames;
+    m.underflowCount = bm.underflowCount;
+    m.overflowCount  = bm.overflowCount;
+    m.fillFrames     = bm.fillFrames;
+    m.capacityFrames = bm.capacityFrames;
+    m.enabled        = bm.enabled;
+    return m;
+}
+
+AudioEngine::SongBusClock AudioEngine::getSongBusClock() const
+{
+    SongBusClock c;
+    const double sr = currentSampleRate.load(std::memory_order_relaxed);
+    const auto h = songBus.heardClock();
+    c.nowMs = juce::Time::getMillisecondCounterHiRes();
+    c.fillFrames = songBus.metrics().fillFrames;
+    if (!h.valid || !(sr > 0.0)) return c;
+    const double outLatMs = 1000.0 * (double) outputLatencySamples.load(std::memory_order_relaxed) / sr;
+    // The block that started at h.sourceFrame was handed to the driver at
+    // h.wallMs and reaches the DAC outputLatency later; frames then follow at
+    // the device rate (h.srcPerDeviceFrame source frames each). An output
+    // callback that has stopped firing (> 250 ms) means nothing is playing.
+    const double sinceMs = c.nowMs - h.wallMs;
+    if (sinceMs > 250.0) return c;
+    c.valid = true;
+    c.outputLatencyMs = outLatMs;
+    c.sourceFramesPerSecond = sr * h.srcPerDeviceFrame;
+    c.heardSourceFrame = h.sourceFrame + (sinceMs - outLatMs) / 1000.0 * c.sourceFramesPerSecond;
+    return c;
 }
 
 AudioEngine::RendererBusMetrics AudioEngine::getRendererBusMetrics() const

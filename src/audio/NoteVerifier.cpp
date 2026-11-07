@@ -62,6 +62,7 @@ void NoteVerifier::setChart(const ChartUpdate& update)
     // stale position. lastPlayhead is worker-only but guarded by `lock` here.
     havePushedPlayhead.store(false);
     pushedPlaying = false;  // plain bool, guarded by `lock` (held here)
+    playheadModel.reset();
     lastPlayhead = 0.0;
     // Onset profile follows the arrangement; publish it BEFORE the reset flag
     // so the worker tick that observes onsetResetPending (and resets the
@@ -85,6 +86,7 @@ void NoteVerifier::clearChart()
     // for the worker to score the next setPlayhead() against.
     havePushedPlayhead.store(false);
     pushedPlaying = false;
+    playheadModel.reset();
     lastPlayhead = 0.0;
     onsetResetPending.store(true);
 }
@@ -100,34 +102,31 @@ std::vector<NoteVerifier::Verdict> NoteVerifier::drainVerdicts()
 void NoteVerifier::setPlayhead(double songTime, bool playing)
 {
     {
-        // Publish the timing trio as one snapshot under `lock` so
-        // currentPlayhead() can never read a half-updated set.
+        // Updated under `lock` so playheadAt() never reads a half-updated model.
         const juce::ScopedLock sl(lock);
-        pushedReceiptMs = juce::Time::getMillisecondCounterHiRes();
+        const double now = juce::Time::getMillisecondCounterHiRes();
         // Shift by this source's capture-latency correction (0 on the primary).
-        pushedSongTime = songTime - playheadOffsetSec.load(std::memory_order_relaxed);
+        const double song = songTime - playheadOffsetSec.load(std::memory_order_relaxed);
+        playheadModel.push(song, playing, now);
+        pushedReceiptMs = now;
+        pushedSongTime = song;
         pushedPlaying = playing;
     }
     havePushedPlayhead.store(true);
 }
 
-double NoteVerifier::currentPlayhead() const
+double NoteVerifier::playheadAt(double wallMs) const
 {
-    double base, receiptMs;
-    bool playing;
-    {
-        const juce::ScopedLock sl(lock);
-        base      = pushedSongTime;
-        receiptMs = pushedReceiptMs;
-        playing   = pushedPlaying;
-    }
-    const double ageMs = juce::Time::getMillisecondCounterHiRes() - receiptMs;
-    if (ageMs > kPlayheadStaleMs) return base;   // tick stopped — freeze
-    if (! playing)                return base;   // paused — hold
-    return base + ageMs / 1000.0;                // playing — interpolate forward
+    const juce::ScopedLock sl(lock);
+    return playheadModel.songAt(wallMs, juce::Time::getMillisecondCounterHiRes());
     // Note: after a stale freeze the playhead jumps forward on the first
     // fresh push; any note whose whole window was traversed during the freeze
     // finalizes as a miss next tick — correct, detection genuinely was down.
+}
+
+double NoteVerifier::currentPlayhead() const
+{
+    return playheadAt(juce::Time::getMillisecondCounterHiRes());
 }
 
 void NoteVerifier::prepare(double sampleRate, int /*blockSize*/)
@@ -179,18 +178,36 @@ void NoteVerifier::run()
         appliedBassProfile = wantBass;
     }
 
-    // The playhead for this whole pass — interpolated from the last push so
-    // every note here is judged against the same chart position.
-    const double playhead = currentPlayhead();
+    // The playhead for this whole pass, in AUDIO time: the song time at which
+    // the newest captured input sample left the converter — the callback's
+    // wall time on the playhead model, minus the device's capture latency.
+    // Every note here is judged against the same chart position, and the
+    // comb frame (the newest input) lines up with it. A stale stamp (input
+    // stalled) falls back to the wall-clock playhead so notes still finalize.
+    uint64_t stampIdx = 0;
+    double stampMs = 0.0;
+    const bool stamped = engine.getInputStamp(stampIdx, stampMs)
+        && juce::Time::getMillisecondCounterHiRes() - stampMs < 200.0;
+    const double captureLatency = engine.getCaptureLatencySec();
+    double rate = 1.0;
+    {
+        const juce::ScopedLock sl(lock);
+        rate = playheadModel.getRate();
+    }
+    const double stampSong = stamped ? playheadAt(stampMs) : 0.0;
+    const double playhead = stamped ? stampSong - captureLatency * rate : currentPlayhead();
 
     double sr = engine.getCurrentSampleRate();
     if (! std::isfinite(sr) || sr <= 0.0) sr = 48000.0;
 
     // ── Onset detection ─────────────────────────────────────────────────────
     // Feed every input sample captured since the last tick into the flux
-    // detector, and log each detected pick attack in song time. Input-ring
-    // index `w` ("now") corresponds to `playhead`; an earlier sample is
-    // proportionally earlier.
+    // detector, and log each detected pick attack in song time. With a capture
+    // stamp, ring index `stampIdx` corresponds to `playhead` exactly (both
+    // describe the newest captured sample) and any other sample is offset by
+    // its distance in samples — signed, a block that landed after the stamp
+    // was read sits later. Without one (no block yet), fall back to treating
+    // the ring head as "now".
     {
         std::vector<float> fresh;
         const uint64_t w = engine.getInputSince(readCursor, fresh);
@@ -202,7 +219,9 @@ void NoteVerifier::run()
             onsetDetector.process(fresh.data(), fresh.size(), firstIdx, onsets);
             for (const auto& o : onsets)
             {
-                const double songT = playhead - (double) (w - o.sampleIndex) / sr;
+                const double songT = stamped
+                    ? slopsmith::onsetSongTime(stampSong, stampIdx, o.sampleIndex, sr, captureLatency, rate)
+                    : playhead - (double) (w - o.sampleIndex) / sr * rate;
                 onsetLog.push_back({ songT, false });
             }
         }

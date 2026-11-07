@@ -47,6 +47,9 @@ public:
     // process() (the NoteVerifier worker thread) — not concurrently with it.
     void setProfile(bool bass);
 
+    // The current report backdate, in samples (onset = flux-peak frame end - this).
+    int getBackdateSamples() const { return onsetBackdateSamples; }
+
     // Feed contiguous samples whose first element sits at monotonic index
     // `firstSampleIndex`. Detected onsets are appended to `out`. A gap in the
     // index sequence (samples lost) resyncs and clears flux history.
@@ -88,7 +91,7 @@ private:
     bool haveOnset = false;
 
     int loBin = 1, hiBin = 64;     // flux band, set from the sample rate
-    int onsetBackdateSamples = 2400;  // onset calibration in samples, per rate
+    int onsetBackdateSamples = 525;   // = backdateSamples (rate-independent)
 
     // Profile-dependent tunables. prepare()/setProfile() write these from the
     // active profile, then derive loBin/hiBin/onsetBackdateSamples for the
@@ -96,7 +99,7 @@ private:
     bool   bassProfile      = false;
     float  thresholdK       = 1.8f;     // adaptive-threshold multiplier
     double debounceSeconds  = 0.040;    // min gap between onsets
-    double backdateSeconds  = 0.050;    // flux-peak-vs-attack + chain latency
+    int    backdateSamples  = 525;      // detector lag: flux-peak frame end - attack
     double bandLoHz         = 70.0;     // flux band floor
     double bandHiHz         = 3000.0;   // flux band ceiling
 
