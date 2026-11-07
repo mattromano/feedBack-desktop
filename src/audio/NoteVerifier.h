@@ -87,6 +87,12 @@ public:
         std::string id;
         bool detected = false;
         double detectedSongTime = 0.0; // playhead at which the note was scored
+        // True only when detectedSongTime came from a real pick attack (an
+        // onset claimed from the onset log). A hit with no matching attack
+        // (legato, or an attack the flux detector missed: palm mutes, fast
+        // runs) is stamped at the chart time — "on time" by construction, not
+        // by measurement — so timing consumers (stats, Sync Lab) must skip it.
+        bool timed = false;
         float centsError = 0.0f;
         float snr = 0.0f;
     };

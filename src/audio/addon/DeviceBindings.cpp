@@ -642,6 +642,7 @@ Napi::Value GetSourceNoteVerdicts(const Napi::CallbackInfo& info)
         entry.Set("id", v.id);
         entry.Set("detected", v.detected);
         entry.Set("detectedSongTime", v.detectedSongTime);
+        entry.Set("timed", v.timed);
         entry.Set("centsError", v.centsError);
         entry.Set("snr", v.snr);
         arr.Set((uint32_t) i, entry);
@@ -812,7 +813,8 @@ Napi::Value SetSourceChart(const Napi::CallbackInfo& info)
 }
 
 // Drain the verdicts the NoteVerifier thread has finalized since the last
-// call. Returns an array of { id, detected, detectedSongTime, centsError, snr }.
+// call. Returns an array of { id, detected, detectedSongTime, timed, centsError, snr }
+// (timed: detectedSongTime is a measured pick attack, not the chart time).
 //
 // Optionally also pushes the renderer's playhead: getNoteVerdicts(songTime,
 // playing). The plugin calls this once per detect tick, so folding the push in
@@ -846,6 +848,7 @@ Napi::Value GetNoteVerdicts(const Napi::CallbackInfo& info)
         entry.Set("id", v.id);
         entry.Set("detected", v.detected);
         entry.Set("detectedSongTime", v.detectedSongTime);
+        entry.Set("timed", v.timed);
         entry.Set("centsError", v.centsError);
         entry.Set("snr", v.snr);
         arr.Set((uint32_t) i, entry);
