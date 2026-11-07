@@ -189,9 +189,11 @@ Tracked as **I-023** (one batch, after Top 5).
 In order. These are what Phase 3 fixes. Each one is behaviour-preserving apart from the noted
 safety fixes.
 
-1. **[I-001] Split the test suite and run it in CI.** Move the 6 engine-loading tests to
-   `tests/engine/`, add `test:fast` / `test:engine` scripts (`test` = fast), and run fast in
-   `ci.yml` plus engine + C++ unit suites in `addon-ci.yml`. This is the safety net for
+1. **[I-001] Split the test suite; run only the fast tests in CI.** Move the 6 engine-loading
+   tests to `tests/engine/`, add `test:fast` / `test:engine` scripts (`test` = fast), and add
+   one `npm run test:fast` step to the existing `ci.yml` check job (Ubuntu, after typecheck;
+   the suite takes under a second). Scope set by the user on 2026-11-07: no new CI jobs, no
+   engine lane, nothing added to the release build (`build.yml`). This is the safety net for
    everything else, and it makes the safe local command one word. Blocks 2-5.
 2. **[I-002] Move the desktop config out of soundfont-manager and stop a corrupt file from
    wiping it.** Extract `desktop-config.ts` (re-exported from soundfont-manager for one

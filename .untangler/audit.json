@@ -14,7 +14,7 @@
       ],
       "description": "CI runs no JS or C++ unit tests; the 6 engine-loading JS tests cannot run on the owner machine.",
       "status": "pending",
-      "refactor_plan": "Move engine tests to tests/engine/, add test:fast/test:engine (test=fast), run fast in ci.yml and engine + ctest unit suites in addon-ci.yml.",
+      "refactor_plan": "Move engine tests to tests/engine/, add test:fast/test:engine (test=fast), add one npm run test:fast step to the existing ci.yml check job. User scope 2026-11-07: no new CI jobs, no engine lane, nothing added to build.yml/release builds.",
       "commits": []
     },
     {
