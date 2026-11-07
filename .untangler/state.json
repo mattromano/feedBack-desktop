@@ -71,5 +71,6 @@
   },
   "user_ack": {
     "audit_duration": "2026-11-07: user asked to audit and set up (scope confirmed)"
-  }
+  },
+  "next_action": "Phase 1: user to sign off on the Top 5 (I-001, I-002, I-006, I-004, I-003) or swap items; then record top_5_signed_off_at and run check_gate.py 1"
 }
