@@ -1,0 +1,75 @@
+{
+  "schema_version": 1,
+  "started_at": "2026-11-07T20:48:45.568531+00:00",
+  "current_phase": 1,
+  "phases": {
+    "0": {
+      "name": "Triage",
+      "status": "done",
+      "gates": {},
+      "started_at": "2026-11-07T20:48:45.568531+00:00",
+      "completed_at": "2026-11-07T20:50:20.953556+00:00"
+    },
+    "1": {
+      "name": "Audit",
+      "status": "in_progress",
+      "gates": {},
+      "started_at": "2026-11-07T20:50:20.953556+00:00"
+    },
+    "2": {
+      "name": "Safety Net",
+      "status": "pending",
+      "gates": {}
+    },
+    "3": {
+      "name": "Refactor",
+      "status": "pending",
+      "gates": {}
+    },
+    "4": {
+      "name": "Hardening",
+      "status": "pending",
+      "gates": {}
+    },
+    "5": {
+      "name": "Handover",
+      "status": "pending",
+      "gates": {}
+    }
+  },
+  "baseline": {
+    "git_tag": "pre-refactor-baseline",
+    "branch": "refactor/untangle-2026-11-07",
+    "total_loc": 53008,
+    "file_count": 408,
+    "test_count": 155,
+    "tests_passing": 155,
+    "tests_failing": 0,
+    "code_file_count": 203,
+    "dependency_count": {
+      "dependencies": 3,
+      "devDependencies": 5
+    },
+    "test_note": "Baseline run: 24 files (155 pass, 0 fail), incl. config-bootstrap + config-reset (temp dirs only). Going forward the safe set is 22 files (RUNNING.md); 6 engine-loading files left to CI"
+  },
+  "stack": [
+    "electron",
+    "typescript",
+    "vanilla-js-renderer",
+    "cpp-juce-node-addon",
+    "vst-sandbox",
+    "python-bundled-core"
+  ],
+  "top_5_signed_off_at": null,
+  "overrides": [],
+  "stack_reference_note": "No matching stack file; read node-express.md as the closest (Node process) and applied its general patterns",
+  "last_test_run": {
+    "timestamp": "2026-11-07T20:50:11.101125+00:00",
+    "passing": true,
+    "passing_count": 155,
+    "failing_count": 0
+  },
+  "user_ack": {
+    "audit_duration": "2026-11-07: user asked to audit and set up (scope confirmed)"
+  }
+}
