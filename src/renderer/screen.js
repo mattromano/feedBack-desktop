@@ -1587,10 +1587,18 @@ window.__feedBackDesktopAudioHooks = window.__feedBackDesktopAudioHooks || {};
 
         meterPollInterval = setInterval(async () => {
             if (!audioRunning) {
-                meterInput.style.width = '0%';
-                meterOutput.style.width = '0%';
+                if (meterInput.style.width !== '0%') meterInput.style.width = '0%';
+                if (meterOutput.style.width !== '0%') meterOutput.style.width = '0%';
                 return;
             }
+            // Only meter while the Audio screen is actually showing, and hold
+            // while a <select> has focus. These writes ran ~30x/s on a hidden
+            // screen whenever a live guitar was connected; that DOM churn kept
+            // closing open native <select> popups elsewhere in the app (the
+            // library's Artist/Sort dropdowns) and cost two IPC calls a frame.
+            if (meterInput.getClientRects().length === 0) return;
+            const focused = document.activeElement;
+            if (focused && focused.tagName === 'SELECT') return;
 
             try {
                 const levels = await api.getLevels();
