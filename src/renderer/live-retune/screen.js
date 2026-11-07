@@ -11,6 +11,12 @@
 // .current = { cents, source }, change event 'songcents:change'), e.g. +45c on a sharp record, so
 // a standard-tuned guitar plays in tune with the record.
 //
+// "Follow song" adds the current chart's tuning when every string is offset by the same whole
+// number of semitones (Eb standard = -1 on all strings, D standard = -2, ...), so a guitar kept
+// in E standard plays along with a down-tuned song without retuning. Uneven tunings (Drop D)
+// can't be matched by a whole-guitar shift and are left alone. Off by default: a player who
+// physically retunes would otherwise be shifted twice.
+//
 // The control is appended to #player-controls; the v3 player re-homes plugin controls from there
 // into its Plugins popover.
 (function () {
@@ -31,7 +37,7 @@
         const st = Math.max(-MAX_ST, Math.min(MAX_ST, Math.round(Number(s.semitones) || 0)));
         const c = Math.max(-100, Math.min(100, Math.round(Number(s.cents) || 0)));
         const mode = MODES.some((m) => m.id === s.mode) ? s.mode : 'balanced';
-        return { semitones: st, cents: c, mode, match: !!s.match };
+        return { semitones: st, cents: c, mode, match: !!s.match, follow: !!s.follow };
     }
 
     const state = load();
@@ -50,7 +56,24 @@
         const cur = window.__songCents && window.__songCents.current;
         return state.match && cur && typeof cur.cents === 'number' ? Math.round(cur.cents) : 0;
     }
-    const totalCents = () => state.semitones * 100 + state.cents + matchCents();
+    // The song's uniform tuning offset in semitones when "Follow song" is on (0 when off, when no
+    // song is loaded, or when the strings aren't all shifted by the same amount).
+    function songTuningSt(tuning) {
+        if (!Array.isArray(tuning) || tuning.length === 0) return 0;
+        const first = Number(tuning[0]);
+        if (!Number.isInteger(first) || first === 0) return 0;
+        if (!tuning.every((t) => Number(t) === first)) return 0;
+        return Math.max(-MAX_ST, Math.min(MAX_ST, first));
+    }
+    function followSt() {
+        if (!state.follow) return 0;
+        const hw = window.highway || window._slopsmithHighway;
+        let info = null;
+        try { info = hw && typeof hw.getSongInfo === 'function' ? hw.getSongInfo() : null; } catch (_) { info = null; }
+        return songTuningSt(info && info.tuning);
+    }
+    const shiftSt = () => Math.max(-MAX_ST, Math.min(MAX_ST, state.semitones + followSt()));
+    const totalCents = () => shiftSt() * 100 + state.cents + matchCents();
     const windowMs = () => (MODES.find((m) => m.id === state.mode) || MODES[1]).ms;
 
     function save() {
@@ -61,7 +84,7 @@
         const a = api();
         if (!a || typeof a.setLivePitch !== 'function') { supported = false; return; }
         Promise.resolve(a.setLivePitch({
-            semitones: state.semitones,
+            semitones: shiftSt(),
             cents: state.cents + matchCents(),
             windowMs: windowMs(),
         })).catch(() => {});
@@ -97,6 +120,16 @@
         if (Number(sl.value) !== state.cents) sl.value = String(state.cents);
         cl.textContent = (state.cents > 0 ? '+' : '') + state.cents + 'c';
         if (md.value !== state.mode) md.value = state.mode;
+        const fb = document.getElementById('lr-follow');
+        if (fb) {
+            const fst = followSt();
+            fb.textContent = 'Follow song' + (state.follow && fst ? ` ${fst > 0 ? '+' : ''}${fst} st` : '');
+            fb.setAttribute('aria-pressed', state.follow ? 'true' : 'false');
+            fb.style.background = state.follow ? 'rgba(14,116,144,.45)' : '';
+            fb.style.color = state.follow ? '#e0f2fe' : '';
+            fb.title = 'Shift by the song’s tuning when every string is down (or up) by the same amount '
+                + '(Eb, D, C# standard…), so an E-standard guitar plays along without retuning. Drop tunings are left alone.';
+        }
         const mb = document.getElementById('lr-match');
         if (mb) {
             const cur = window.__songCents && window.__songCents.current;
@@ -178,11 +211,13 @@
         const reset = btn('0', 'Back to standard (no shift)', () => set({ semitones: 0, cents: 0 }));
         const match = btn('Match song', '', () => set({ match: !state.match }));
         match.id = 'lr-match';
+        const follow = btn('Follow song', '', () => set({ follow: !state.follow }));
+        follow.id = 'lr-follow';
         const info = document.createElement('span');
         info.id = 'lr-info';
         info.className = 'tabular-nums text-gray-400';
 
-        wrap.append(name, down, st, up, sl, cl, md, reset, match, info);
+        wrap.append(name, down, st, up, sl, cl, md, reset, follow, match, info);
         bar.append(wrap);
         render();
     }
@@ -210,7 +245,7 @@
         render();
     }
 
-    window.__liveRetune = { state, set, apply };
+    window.__liveRetune = { state, set, apply, songTuningSt, followSt, shiftSt };
     window.addEventListener('songcents:change', () => { apply(); render(); });
 
     const bus = window.feedBack || window.slopsmith;
