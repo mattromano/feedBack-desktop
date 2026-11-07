@@ -2367,6 +2367,16 @@ window.__feedBackDesktopAudioHooks = window.__feedBackDesktopAudioHooks || {};
             try { snapshotBlob = await api.savePreset(); } catch (_) { /* best-effort */ }
         }
 
+        // Mute the guitar chain for the swap (issue #16): the engine builds the new chain stage by
+        // stage with audio running, so a high-gain amp could play for ~1 s before its cabinet IR
+        // landed — a burst of harsh, cab-less fizz. applyPresetGainLevels() below restores the
+        // level on success; every failure path restores the slider's level (the current one).
+        const restoreChainGain = () => {
+            const db = parseFloat(outputGainSlider ? outputGainSlider.value : '0');
+            try { api.setGain('chain', dbToLinearGain(Number.isFinite(db) ? db : 0)); } catch (_) { /* best-effort */ }
+        };
+        try { await api.setGain('chain', 0); } catch (_) { /* best-effort */ }
+
         try {
             await api.clearChain();
             // Clean any Rig Builder stages a pre-fix build baked into this saved
@@ -2390,6 +2400,7 @@ window.__feedBackDesktopAudioHooks = window.__feedBackDesktopAudioHooks || {};
             if (result === false || (result && result.success === false)) {
                 console.error(tag + ': loadPreset failed:', result?.error || 'unknown error');
                 await _restorePresetBlob(snapshotBlob, tag);
+                restoreChainGain();
                 if (!snapshotBlob) {
                     // No rollback available; chain is now empty — sync localStorage and UI to match.
                     try { localStorage.setItem('slopsmith-signal-chain', '[]'); } catch (_) {}
@@ -2409,6 +2420,7 @@ window.__feedBackDesktopAudioHooks = window.__feedBackDesktopAudioHooks || {};
         } catch (e) {
             console.error(tag + ':', e);
             await _restorePresetBlob(snapshotBlob, tag);
+            restoreChainGain();
             if (!snapshotBlob) {
                 // No rollback available; chain is now empty — sync localStorage and UI to match.
                 try { localStorage.setItem('slopsmith-signal-chain', '[]'); } catch (_) {}
@@ -4219,6 +4231,11 @@ window.__feedBackDesktopAudioHooks = window.__feedBackDesktopAudioHooks || {};
         constructor() {
             this.activeTone = null;
             this.activePreset = null;
+            // The song's base tone (issue #15): CDLC authors often name it "Lead" or
+            // "<song>_solo", which the keyword classifier files under solo, so the whole
+            // song played on the solo preset. The base tone is the song's default sound —
+            // it never takes the solo target unless the user overrode it for this tone.
+            this.baseTone = '';
             this.taSwitcher = true;
             this._switchLock = null;  // in-flight Promise; null when idle
             this._pendingTone = null; // latest request that arrived while locked (coalesced)
@@ -4244,7 +4261,13 @@ window.__feedBackDesktopAudioHooks = window.__feedBackDesktopAudioHooks || {};
         }
         async _doSwitch(input) {
             const cfg = readTaStore();
-            const { effectiveName: presetName, autoName, category } = getTaSessionEffectivePreset(input, cfg);
+            let { effectiveName: presetName, autoName, category } = getTaSessionEffectivePreset(input, cfg);
+            const ov = (typeof window !== 'undefined') ? window._aeTaSessionOverrides : null;
+            const userOverride = !!(ov && Object.prototype.hasOwnProperty.call(ov, input) && ov[input]);
+            if (this.baseTone && input === this.baseTone && category === 'solo' && !userOverride) {
+                const idle = (cfg.targets || {}).idle;
+                if (idle) { presetName = idle; autoName = idle; category = 'idle (base tone)'; }
+            }
             if (!presetName || presetName === this.activePreset) return;
             const ok = await loadPresetByName(presetName);
             if (ok) {
@@ -4282,6 +4305,7 @@ window.__feedBackDesktopAudioHooks = window.__feedBackDesktopAudioHooks || {};
             return true;
         }
         const switcher = new ToneAutomationSwitcher();
+        switcher.baseTone = String(toneBase || '').trim();
         window._toneSwitcher = switcher;
         const initialInput = String(toneBase || songKey || '').trim();
         if (initialInput) await switcher.switchToTone(initialInput);
