@@ -160,7 +160,6 @@ clone_slopsmith() {
 		mattromano/feedBack-plugin-song-preview:song_preview
 		mattromano/feedBack-plugin-splitscreen@custom:splitscreen
 		mattromano/feedBack-plugin-staffview:staffview
-		mattromano/feedBack-plugin-stem-mixer:stem_mixer
 		mattromano/feedBack-plugin-stem-splitter:stem_splitter
 		mattromano/feedBack-plugin-stems@custom:stems
 		mattromano/feedBack-plugin-stepmode:stepmode
