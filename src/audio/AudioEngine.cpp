@@ -848,6 +848,18 @@ void AudioEngine::audioDeviceAboutToStart(juce::AudioIODevice* device)
     // heard clock. Split mode records the output device's in audioOutputAboutToStart.
     if (duplexMode.load(std::memory_order_relaxed))
         outputLatencySamples.store(device->getOutputLatencyInSamples(), std::memory_order_relaxed);
+    if (testLoopback)
+    {
+        loopDelay = device->getOutputLatencyInSamples() + device->getInputLatencyInSamples();
+        const int nCh = juce::jmax(2, device->getActiveInputChannels().countNumberOfSetBits());
+        loopIn.assign((size_t) nCh, std::vector<float>((size_t) juce::jmax(bs, 4096), 0.0f));
+        loopInPtrs.assign((size_t) nCh, nullptr);
+        for (int c = 0; c < nCh; ++c) loopInPtrs[(size_t) c] = loopIn[(size_t) c].data();
+        std::fill(loopRing.begin(), loopRing.end(), 0.0f);
+        loopWrite = 0;
+        fprintf(stderr, "[test-loopback] ON: delay %d samples (out %d + in %d), %d input ch\n",
+                loopDelay, device->getOutputLatencyInSamples(), device->getInputLatencyInSamples(), nCh);
+    }
 
     // Prepare each ACTIVE PRIMARY-device source's DSP and reset its rings for a
     // clean cold start. Inactive pooled chains stay unprepared (no threads). EXTRA-
@@ -1072,7 +1084,24 @@ void AudioEngine::audioDeviceIOCallbackWithContext(
     // clock — never here. With no extra device every source is deviceKey 0, so
     // this is the single-device path unchanged. See mixSourcesForDevice for the
     // fast-path / multi-source rationale; it is shared with each extra callback.
-    pool.mixForDevice(0, inputData, numInputChannels, buffer, sourceMonitorScratch,
+    const float* const* chainInput = inputData;
+    int chainInputChannels = numInputChannels;
+    const bool loopNow = testLoopback && duplex && ! loopIn.empty()
+                         && numSamples <= (int) loopIn[0].size() && numInputChannels <= (int) loopIn.size();
+    if (loopNow)
+    {
+        // Input sample j of this callback left the "cable" loopDelay samples of
+        // output stream earlier (see AudioEngine.h).
+        for (int j = 0; j < numSamples; ++j)
+        {
+            const int64_t idx = (int64_t) loopWrite + j - loopDelay;
+            const float v = (idx >= 0 && idx < (int64_t) loopWrite) ? loopRing[(size_t) idx & (size_t) (kLoopRing - 1)] : 0.0f;
+            for (auto& ch : loopIn) ch[(size_t) j] = v;
+        }
+        chainInput = loopInPtrs.data();
+        chainInputChannels = juce::jmax(1, numInputChannels);
+    }
+    pool.mixForDevice(0, chainInput, chainInputChannels, buffer, sourceMonitorScratch,
                       effectiveOutputChannels, numSamples);
 
     // Duplex mixes backing + applies output gain + meters here.
@@ -1151,6 +1180,18 @@ void AudioEngine::audioDeviceIOCallbackWithContext(
         currentOutputLevel.store(peak);
         float prevPeak = outputPeak.load();
         if (peak > prevPeak) outputPeak.store(peak);
+
+        if (loopNow)
+        {
+            const int nOut = juce::jmin(numOutputChannels, 2);
+            for (int j = 0; j < numSamples; ++j)
+            {
+                float m = 0.0f;
+                for (int ch = 0; ch < nOut; ++ch) m += buffer.getSample(ch, j);
+                loopRing[(size_t) (loopWrite + (uint64_t) j) & (size_t) (kLoopRing - 1)] = nOut > 0 ? m / (float) nOut : 0.0f;
+            }
+            loopWrite += (uint64_t) numSamples;
+        }
     }
     else
     {

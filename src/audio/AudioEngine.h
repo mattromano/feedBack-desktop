@@ -533,6 +533,19 @@ private:
     // Wall time (juce hi-res ms) the live output callback started - the heard
     // clock's reference: the block it fills reaches the DAC outputLatency later.
     std::atomic<double> outputCallbackStartMs{0.0};  // written by the output thread
+    // TEST ONLY (env SLOPSMITH_TEST_LOOPBACK=1, duplex devices): the input is
+    // replaced by the engine's own output delayed by the device's reported
+    // output + input latency -- an ideal cable from the output jack to the
+    // input. Lets the whole timing chain (song bus heard clock, capture stamp,
+    // onset detection, judgments) be measured end to end with the song's own
+    // guitar as the player. Off in normal runs: the flag is read once at start.
+    const bool testLoopback = [] { const char* v = std::getenv("SLOPSMITH_TEST_LOOPBACK"); return v != nullptr && v[0] == '1'; }();
+    static constexpr int kLoopRing = 1 << 17;
+    std::vector<float> loopRing = std::vector<float>(testLoopback ? (size_t) kLoopRing : 0, 0.0f);
+    uint64_t loopWrite = 0;                          // audio thread only
+    int loopDelay = 0;                               // set at device start
+    std::vector<std::vector<float>> loopIn;          // fake input channels
+    std::vector<const float*> loopInPtrs;
     // Backing heard stamp (seqlock): rendered position at the end of the last
     // block, its length in seconds of output, the callback start, the rate.
     void publishBackingStamp(int outSamples);
