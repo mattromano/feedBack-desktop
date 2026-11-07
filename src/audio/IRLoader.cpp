@@ -94,8 +94,11 @@ void IRLoader::setStateInformation(const void* data, int sizeInBytes)
 
     if (auto* obj = parsed.getDynamicObject())
     {
+        // Same as NAMProcessor::setStateInformation: the preset already loaded
+        // this slot's IR by path, so only reload when the state names another.
         auto path = obj->getProperty("irPath").toString();
-        if (path.isNotEmpty())
+        if (path.isNotEmpty()
+            && ! (irLoaded.load() && juce::File(path) == juce::File(currentIRPath)))
             loadIR(juce::File(path));
 
         if (obj->hasProperty("mix"))
