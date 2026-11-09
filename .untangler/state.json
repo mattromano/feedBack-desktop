@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "started_at": "2026-11-07T20:48:45.568531+00:00",
-  "current_phase": 3,
+  "current_phase": 4,
   "phases": {
     "0": {
       "name": "Triage",
@@ -26,14 +26,16 @@
     },
     "3": {
       "name": "Refactor",
-      "status": "in_progress",
+      "status": "done",
       "gates": {},
-      "started_at": "2026-11-09T14:47:39.483445+00:00"
+      "started_at": "2026-11-09T14:47:39.483445+00:00",
+      "completed_at": "2026-11-09T16:08:29.044296+00:00"
     },
     "4": {
       "name": "Hardening",
-      "status": "pending",
-      "gates": {}
+      "status": "in_progress",
+      "gates": {},
+      "started_at": "2026-11-09T16:08:29.044296+00:00"
     },
     "5": {
       "name": "Handover",
@@ -76,5 +78,5 @@
   "user_ack": {
     "audit_duration": "2026-11-07: user asked to audit and set up (scope confirmed)"
   },
-  "next_action": "Phase 3 done in code and app-checked over CDP (I-003 checks pass; MIDI chain wipe is pre-existing, deferred). User to confirm, then advance 3 and start Phase 4 (hardening)"
+  "next_action": "Phase 4: gate 2/4. User runs npm run hooks:install (clears the hook check). Lint check: boundaries are enforced by tests/boundaries.test.js instead of ESLint (no new deps); needs the override phrase or an ESLint setup. Then Phase 5 handover"
 }
