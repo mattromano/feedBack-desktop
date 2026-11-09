@@ -52,7 +52,29 @@ export function getDesktopConfig(): DesktopConfig {
     }
 }
 
+// An unreadable config would otherwise be replaced by just the next patch,
+// silently dropping every other setting (window bounds, LAN access, ...).
+// Keep the bad bytes next to it as slopsmith-desktop.json.corrupt so they can
+// be recovered by hand. Reads still treat it as {} exactly as before.
+function backupIfCorrupt(file: string): void {
+    let raw: string;
+    try {
+        raw = fs.readFileSync(file, 'utf-8');
+    } catch {
+        return; // missing or unreadable: nothing to keep
+    }
+    try {
+        JSON.parse(raw);
+    } catch {
+        try {
+            fs.writeFileSync(file + '.corrupt', raw);
+            console.warn(`[desktop-config] ${file} was not valid JSON; kept a copy as ${file}.corrupt`);
+        } catch { /* best effort */ }
+    }
+}
+
 export function setDesktopConfig(patch: Partial<DesktopConfig>): void {
+    backupIfCorrupt(configPath());
     const current = getDesktopConfig();
     const next = { ...current, ...patch };
     const tmp = configPath() + '.tmp';

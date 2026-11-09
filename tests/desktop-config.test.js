@@ -61,8 +61,17 @@ test('corrupt config reads as {} and the next set still writes the patch', () =>
         assert.deepEqual(t.mod.getDesktopConfig(), {});
         t.mod.setDesktopConfig({ lanAccess: false });
         assert.deepEqual(t.mod.getDesktopConfig(), { lanAccess: false });
-        // I-002 will additionally keep the corrupt bytes as a .corrupt backup;
-        // that assertion is added with the change itself.
+        // The bad bytes are kept next to it instead of being lost.
+        assert.equal(fs.readFileSync(t.file + '.corrupt', 'utf8'), '{ not json');
+    } finally { t.done(); }
+});
+
+test('a healthy or missing config never leaves a .corrupt file', () => {
+    const t = load();
+    try {
+        t.mod.setDesktopConfig({ lanAccess: true });
+        t.mod.setDesktopConfig({ lanAccess: false });
+        assert.equal(fs.existsSync(t.file + '.corrupt'), false);
     } finally { t.done(); }
 });
 
