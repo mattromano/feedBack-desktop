@@ -132,9 +132,11 @@
         "scripts/bundle-slopsmith.sh:185"
       ],
       "description": "git clone 2>/dev/null || echo skipped; a green release can ship without a plugin.",
-      "status": "pending",
+      "status": "done",
       "refactor_plan": "Show stderr; fail when cloned != total unless ALLOW_MISSING_PLUGINS=1; fail loudly on the desktop plugin copy.",
-      "commits": [],
+      "commits": [
+        "d6625c5"
+      ],
       "safety_net": {
         "type": "integration_test",
         "location": "tests/build-plugin-clone.test.js",

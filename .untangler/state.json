@@ -76,5 +76,5 @@
   "user_ack": {
     "audit_duration": "2026-11-07: user asked to audit and set up (scope confirmed)"
   },
-  "next_action": "Phase 3: I-001 and I-002 done. Next: I-006 fail the build when a plugin clone fails (ALLOW_MISSING_PLUGINS=1 escape), same for the bundle-slopsmith.sh desktop plugin copy"
+  "next_action": "Phase 3: I-001, I-002, I-006 done. Next: I-004 callAddon helper in audio-bridge.ts (snapshot must stay identical), then I-003 tone switcher factory (needs packaged-build listening check)"
 }
