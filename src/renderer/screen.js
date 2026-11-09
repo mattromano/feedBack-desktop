@@ -2544,6 +2544,13 @@ window.__feedBackDesktopAudioHooks = window.__feedBackDesktopAudioHooks || {};
             }
             const raw = JSON.parse(localStorage.getItem('slopsmith-tone-mappings') || '{}') || {};
             const key = window._aeGetCurrentSongKey ? window._aeGetCurrentSongKey() : '';
+            // A valid MIDI PC config for this song wins over bypass mappings
+            // at playback (both preload paths check it first), and it only
+            // sends program changes to a VST already in the chain. Clearing
+            // here would delete that VST and nothing would rebuild it — so
+            // keep the chain, even if bypass mappings also resolve.
+            const midi = raw.midiPC && raw.midiPC[key];
+            if (midi && midi.mode === 'midi' && Number(midi.vstSlotId) >= 0) return false;
             // Global / per-song bypass mappings: rebuild only when the
             // mapping resolves to a loadable preset. Evaluate the MERGED
             // mapping that playback actually consumes — getToneMappings()

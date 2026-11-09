@@ -24,7 +24,7 @@ const ALL = [
     'desktop-config', 'device-setup-lifecycle', 'engine-no-default-mic',
     'guitar-input-channel-default', 'heard-clock-wiring', 'input-source-selection-sync',
     'juce-exclusive-type-name', 'library-path-config', 'linux-update-decision',
-    'live-pitch', 'live-retune-follow-song', 'ml-note-detection',
+    'live-pitch', 'live-retune-follow-song', 'midi-chain-preserve', 'ml-note-detection',
     'monitor-mute-suppression', 'multi-source', 'napi-arg-fuzz',
     'preset-swap-mute', 'renderer-capability-migration', 'renderer-iife-scope',
     'song-tone-lock', 'startup-missing-input', 'test-inventory',
