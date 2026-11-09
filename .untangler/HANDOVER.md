@@ -59,9 +59,7 @@ Phase 4, recorded in `.untangler/overrides.log`:
 
 The full list is in `.untangler/deferred.md` and `audit.json`. The next three by priority:
 
-1. **MIDI PC mode wipes the chain on song load.** The VST that program changes target is
-   gone after load. The same happens on the pre-refactor code. The likely cause is the
-   400 ms clear-chain-for-new-song step not exempting MIDI mode.
+1. ~~MIDI PC mode wipes the chain on song load~~: **fixed after handover in `60218a7`**. A valid MIDI PC config now keeps the chain on song start; checked in the packaged app.
 2. **One song load rebuilds the chain up to 3 times.** The rebuilds are the IIFE 2 preload
    plus the IIFE 1 reapplies at 600 and 1500 ms. They're serialised now, but the work is
    redundant and closes open VST editor windows each time.
