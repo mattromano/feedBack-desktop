@@ -76,5 +76,5 @@
   "user_ack": {
     "audit_duration": "2026-11-07: user asked to audit and set up (scope confirmed)"
   },
-  "next_action": "Phase 3: I-001 done (f155640, 1d2d250). Next: I-002 extract desktop-config.ts from soundfont-manager.ts, keep a .corrupt backup on parse errors"
+  "next_action": "Phase 3: I-001 and I-002 done. Next: I-006 fail the build when a plugin clone fails (ALLOW_MISSING_PLUGINS=1 escape), same for the bundle-slopsmith.sh desktop plugin copy"
 }

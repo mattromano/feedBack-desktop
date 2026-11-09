@@ -39,9 +39,12 @@
         "src/main/python.ts:12"
       ],
       "description": "Parse failure returns {} and the next write drops every setting; the module also causes a require cycle.",
-      "status": "pending",
+      "status": "done",
       "refactor_plan": "Extract desktop-config.ts (re-export for one release); on parse failure keep a .corrupt backup and do not overwrite blindly; add a test.",
-      "commits": [],
+      "commits": [
+        "34c14bc",
+        "ec74899"
+      ],
       "safety_net": {
         "type": "unit_test",
         "location": "tests/desktop-config.test.js",
