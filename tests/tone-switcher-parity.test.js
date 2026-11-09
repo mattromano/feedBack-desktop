@@ -1,13 +1,12 @@
-// Untangler safety net for I-003 (one tone-switcher factory shared by both
-// screen.js IIFEs).
+// Untangler safety net for I-003 (one tone-switch implementation shared by
+// both screen.js IIFEs).
 //
-// Today the bypass switcher exists twice (IIFE 1's ToneSwitcher class and an
-// object literal in IIFE 2's song preload) and the MIDI program-change
-// switcher three times. These tests run every copy against the same scripted
-// tone sequence with a fake audio API and require identical engine calls, so
-// collapsing them into one factory cannot change what reaches the engine.
-// The preload race (IIFE 2 not serialised by _applyToneMappingsLock) is not
-// unit-testable here; it is covered by the packaged-build checklist in
+// Bypass switchers are installed in two places (IIFE 1's ToneSwitcher class and
+// IIFE 2's song preload) and MIDI program-change switchers in three. Each
+// install site is run against the same scripted tone sequence with a fake
+// audio API and must make identical engine calls. The chain lock that
+// serialises IIFE 2's preload with tone-mapping applies is tested directly;
+// the real-app timing is covered by the packaged-build checklist in
 // .untangler/audit.json (I-003 safety_net.manual_checks).
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -28,15 +27,28 @@ function extractDecl(src, head) {
     const open = head.startsWith('class ') ? src.indexOf('{', start) : src.indexOf('{', src.indexOf(')', start));
     return src.slice(start, open) + braceBlock(src, open);
 }
-// The object literal assigned to window._toneSwitcher at the first assignment
-// after `anchor`.
-function switcherLiteral(anchor) {
+function parenBlock(src, openIdx) {
+    let i = openIdx + 1, depth = 1;
+    while (i < src.length && depth > 0) { if (src[i] === '(') depth++; else if (src[i] === ')') depth--; i++; }
+    return src.slice(openIdx, i);
+}
+// The expression (object literal or call) assigned to window._toneSwitcher at
+// the first assignment after `anchor`.
+function switcherExpr(anchor) {
     const a = SRC.indexOf(anchor);
     assert.ok(a !== -1, `anchor not found: ${anchor}`);
-    const assign = SRC.indexOf('window._toneSwitcher = {', a);
-    assert.ok(assign !== -1 && assign - a < 2000, `no switcher literal near: ${anchor}`);
-    return braceBlock(SRC, SRC.indexOf('{', assign));
+    const marker = 'window._toneSwitcher = ';
+    const assign = SRC.indexOf(marker, a);
+    assert.ok(assign !== -1 && assign - a < 2000, `no switcher install near: ${anchor}`);
+    const at = assign + marker.length;
+    if (SRC[at] === '{') return braceBlock(SRC, at);
+    const open = SRC.indexOf('(', at);
+    return SRC.slice(at, open) + parenBlock(SRC, open);
 }
+const SHARED = [
+    extractDecl(SRC, 'function bypassSwitchToTone('),
+    extractDecl(SRC, 'function makeMidiToneSwitcher('),
+].join('\n');
 
 // ── Shared fixture ──────────────────────────────────────────────────────────
 const PRESETS = {
@@ -92,6 +104,7 @@ test('IIFE 1 ToneSwitcher: preload and switch call the engine as pinned', async 
         extractDecl(SRC, 'function getPresetItems('),
         extractDecl(SRC, 'function getToneChangeTime('),
         extractDecl(SRC, 'async function loadPresetItemsWithState('),
+        SHARED,
         extractDecl(SRC, 'class ToneSwitcher'),
         'this.ToneSwitcher = ToneSwitcher;',
     ].join('\n'), ctx);
@@ -128,20 +141,24 @@ test('IIFE 2 bypass switcher switches exactly like IIFE 1', () => {
     const log = [];
     const ctx = {
         console: quiet,
+        window: {},
         api: fakeApi(log),
         effectiveBase: 'Clean',
         toneSlotMap: { Clean: [1, 2], Lead: [3] },
         tonePresetMap: { Clean: PRESETS.CleanP, Lead: PRESETS.LeadP },
+        tonePresetNameMap: { Clean: 'CleanP', Lead: 'LeadP' },
         applyPresetGainLevels: (_api, p) => log.push(['gain', p === PRESETS.CleanP ? 'CleanP' : 'LeadP']),
         applyPresetNoiseGate: () => log.push(['gate']),
         applyPresetTonePolish: () => log.push(['polish']),
     };
-    vm.runInNewContext(`this.sw = ${switcherLiteral('const initialPreset = tonePresetMap[effectiveBase];')};`, ctx);
+    vm.runInNewContext(`${SHARED}
+window._aeBypassSwitchToTone = bypassSwitchToTone;
+this.sw = ${switcherExpr('const initialPreset = tonePresetMap[effectiveBase];')};`, ctx);
     for (const t of SEQUENCE) ctx.sw.switchToTone(t);
     assert.deepEqual(plain(log), BYPASS_SWITCH_CALLS);
-    // Known drift (I-003): this copy has no tonePresetNameMap, so the chain
-    // panel's preset-name lookup misses for bypass songs loaded via IIFE 2.
-    assert.equal(ctx.sw.tonePresetNameMap, undefined);
+    // Fixed drift: the chain panel's preset-name lookup now works for bypass
+    // songs loaded via IIFE 2 too.
+    assert.deepEqual(plain(ctx.sw.tonePresetNameMap), { Clean: 'CleanP', Lead: 'LeadP' });
 });
 
 // ── MIDI program-change switcher (three copies) ─────────────────────────────
@@ -162,7 +179,9 @@ for (const [label, anchor] of Object.entries(MIDI_COPIES)) {
             api, midiConfig: MIDI, midiMappings: MIDI.mappings,
             _liveApi: api, _midiMappings: MIDI.mappings, _midiVstSlot: MIDI.vstSlotId, _midiCh: MIDI.channel,
         };
-        vm.runInNewContext(`this.sw = ${switcherLiteral(anchor)};`, ctx);
+        vm.runInNewContext(`${SHARED}
+window._aeMakeMidiToneSwitcher = makeMidiToneSwitcher;
+this.sw = ${switcherExpr(anchor)};`, ctx);
         assert.equal(ctx.sw.midiMode, true);
         for (const t of ['Clean', 'Clean', 'Nope', 'Lead', 'Lead']) ctx.sw.switchToTone(t);
         assert.deepEqual(log, [
@@ -172,3 +191,40 @@ for (const [label, anchor] of Object.entries(MIDI_COPIES)) {
         assert.equal(ctx.sw.activeTone, 'Lead');
     });
 }
+
+// ── Chain lock shared by tone-mapping applies and IIFE 2's preload ─────────
+test('withToneChainLock runs jobs one at a time, in order, past failures', async () => {
+    const ctx = { window: {}, Promise };
+    vm.runInNewContext(`let _applyToneMappingsLock = Promise.resolve();
+${extractDecl(SRC, 'function withToneChainLock(')}
+this.lock = withToneChainLock;`, ctx);
+    const order = [];
+    let running = 0;
+    const job = (name, fail) => async () => {
+        running++;
+        assert.equal(running, 1, `${name} overlapped another job`);
+        order.push(`${name}:start`);
+        await new Promise((r) => setTimeout(r, 5));
+        order.push(`${name}:end`);
+        running--;
+        if (fail) throw new Error(name);
+    };
+    const a = ctx.lock(job('a'));
+    const b = ctx.lock(job('b', true));
+    const c = ctx.lock(job('c'));
+    await a;
+    await assert.rejects(b, /b/);
+    await c;
+    assert.deepEqual(order, ['a:start', 'a:end', 'b:start', 'b:end', 'c:start', 'c:end']);
+});
+
+test('tone-mapping applies and the IIFE 2 song preload share that lock', () => {
+    assert.match(SRC, /function applyToneMappingsNow\(songKey, options = \{\}\) \{\n\s*return withToneChainLock\(/);
+    assert.match(SRC, /window\._aeWithToneChainLock = withToneChainLock;/);
+    const preloadAt = SRC.indexOf('const preload = async () => {');
+    assert.ok(preloadAt !== -1, 'IIFE 2 preload not found');
+    const tail = SRC.slice(preloadAt, SRC.indexOf('}, 800);', preloadAt));
+    assert.match(tail, /const lock = window\._aeWithToneChainLock;\n\s*void \(typeof lock === 'function' \? lock\(preload\) : preload\(\)\);\s*$/);
+    // After waiting for the lock, a newer song must win.
+    assert.match(tail, /^const preload = async \(\) => \{\n(?:\s*\/\/.*\n)*\s*if \(hookState\.toneAutoLoadGeneration !== generation\) return;/);
+});

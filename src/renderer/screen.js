@@ -2679,6 +2679,50 @@ window.__feedBackDesktopAudioHooks = window.__feedBackDesktopAudioHooks || {};
     let midiAmpSongTonesUnavailable = false;
     const midiAmpSongTonesPending = new Map();
 
+    // ── Shared tone-switch steps (untangler I-003) ─────────────────────────
+    // Both IIFEs install tone switchers on window._toneSwitcher. These are the
+    // one copy of the switching logic; IIFE 2 reaches them through the window
+    // exports below (the IIFEs do not share scope).
+
+    /** Bypass-mode switch: bypass the active tone's slots, un-bypass
+     *  `toneName`'s, then apply its preset levels. No-op for the current tone
+     *  or a tone with no preloaded slots. */
+    function bypassSwitchToTone(sw, toneName, setMultiBypass, applyPreset) {
+        if (toneName === sw.activeTone) return;
+        if (!sw.toneSlotMap[toneName]) return;
+        const changes = [];
+        if (sw.activeTone && sw.toneSlotMap[sw.activeTone]) {
+            for (const id of sw.toneSlotMap[sw.activeTone]) changes.push({ slotId: id, bypassed: true });
+        }
+        for (const id of sw.toneSlotMap[toneName]) changes.push({ slotId: id, bypassed: false });
+        if (changes.length > 0) setMultiBypass(changes);
+        sw.activeTone = toneName;
+        const newPreset = sw.tonePresetMap?.[toneName];
+        if (newPreset) applyPreset(newPreset);
+        console.log('[tone-switcher] Switched to:', toneName);
+    }
+
+    /** MIDI program-change switcher: one VST slot, a program per tone name.
+     *  getApi is read on every switch; channel is passed through as given. */
+    function makeMidiToneSwitcher({ getApi, slotId, channel, mappings }) {
+        return {
+            activeTone: null,
+            midiMode: true,
+            switchToTone(name) {
+                if (name === this.activeTone) return;
+                const program = mappings[name];
+                const midiApi = getApi();
+                if (program !== undefined && midiApi?.sendMidiToSlot) {
+                    midiApi.sendMidiToSlot(slotId, 0, channel, program);
+                    console.log('[tone-switcher] MIDI PC:', name, '-> program', program);
+                }
+                this.activeTone = name;
+            }
+        };
+    }
+    window._aeBypassSwitchToTone = bypassSwitchToTone;
+    window._aeMakeMidiToneSwitcher = makeMidiToneSwitcher;
+
     class ToneSwitcher {
         constructor() {
             this.toneSlotMap = {};      // { toneName: [slotId, ...] }
@@ -2764,28 +2808,11 @@ window.__feedBackDesktopAudioHooks = window.__feedBackDesktopAudioHooks || {};
         }
 
         switchToTone(toneName) {
-            if (toneName === this.activeTone) return;
-            if (!this.toneSlotMap[toneName]) return;
-
-            const changes = [];
-            // Bypass old tone
-            if (this.activeTone && this.toneSlotMap[this.activeTone]) {
-                for (const id of this.toneSlotMap[this.activeTone])
-                    changes.push({ slotId: id, bypassed: true });
-            }
-            // Unbypass new tone
-            for (const id of this.toneSlotMap[toneName])
-                changes.push({ slotId: id, bypassed: false });
-
-            if (changes.length > 0) api.setMultiBypass(changes);
-            this.activeTone = toneName;
-            const newPreset = this.tonePresetMap[toneName];
-            if (newPreset) {
-                applyPresetGainLevels(newPreset);
-                applyPresetNoiseGate(newPreset);
-                applyPresetTonePolish(newPreset);
-            }
-            console.log('[tone-switcher] Switched to:', toneName);
+            bypassSwitchToTone(this, toneName, (changes) => api.setMultiBypass(changes), (preset) => {
+                applyPresetGainLevels(preset);
+                applyPresetNoiseGate(preset);
+                applyPresetTonePolish(preset);
+            });
         }
 
         async teardown() {
@@ -3225,12 +3252,19 @@ window.__feedBackDesktopAudioHooks = window.__feedBackDesktopAudioHooks || {};
     }
 
     let _applyToneMappingsLock = Promise.resolve();
-    function applyToneMappingsNow(songKey, options = {}) {
+    // Serialises every song chain rebuild: tone-mapping applies here and IIFE 2's
+    // song preload (through window._aeWithToneChainLock), so two rebuilds never
+    // clear/load the chain at the same time (untangler I-003).
+    function withToneChainLock(job) {
         const next = _applyToneMappingsLock
             .catch(() => {})
-            .then(() => _applyToneMappingsImpl(songKey, options));
+            .then(job);
         _applyToneMappingsLock = next.catch(() => {});
         return next;
+    }
+    window._aeWithToneChainLock = withToneChainLock;
+    function applyToneMappingsNow(songKey, options = {}) {
+        return withToneChainLock(() => _applyToneMappingsImpl(songKey, options));
     }
 
     async function _applyToneMappingsImpl(songKey, options = {}) {
@@ -3308,18 +3342,12 @@ window.__feedBackDesktopAudioHooks = window.__feedBackDesktopAudioHooks || {};
             if (midiConfig?.mode === 'midi' && midiConfig.vstSlotId >= 0) {
                 const midiMappings = midiConfig.mappings || {};
                 toneSwitcher = null;
-                window._toneSwitcher = {
-                    activeTone: null,
-                    midiMode: true,
-                    switchToTone(name) {
-                        if (name === this.activeTone) return;
-                        const program = midiMappings[name];
-                        if (program !== undefined && api?.sendMidiToSlot) {
-                            api.sendMidiToSlot(midiConfig.vstSlotId, 0, midiConfig.channel || 1, program);
-                        }
-                        this.activeTone = name;
-                    }
-                };
+                window._toneSwitcher = makeMidiToneSwitcher({
+                    getApi: () => api,
+                    slotId: midiConfig.vstSlotId,
+                    channel: midiConfig.channel || 1,
+                    mappings: midiMappings,
+                });
                 if (activeNow) window._toneSwitcher.switchToTone(activeNow);
                 return;
             }
@@ -3899,19 +3927,12 @@ window.__feedBackDesktopAudioHooks = window.__feedBackDesktopAudioHooks || {};
                 const _midiMappings = mappingsObj;
                 const _midiVstSlot = vstSelect ? parseInt(vstSelect.value) : -1;
                 const _midiCh = chInput ? parseInt(chInput.value) : 1;
-                window._toneSwitcher = {
-                    activeTone: null,
-                    midiMode: true,
-                    switchToTone(name) {
-                        if (name === this.activeTone) return;
-                        const program = _midiMappings[name];
-                        if (program !== undefined && _liveApi?.sendMidiToSlot) {
-                            _liveApi.sendMidiToSlot(_midiVstSlot, 0, _midiCh, program);
-                            console.log('[tone-switcher] MIDI PC:', name, '-> program', program);
-                        }
-                        this.activeTone = name;
-                    }
-                };
+                window._toneSwitcher = makeMidiToneSwitcher({
+                    getApi: () => _liveApi,
+                    slotId: _midiVstSlot,
+                    channel: _midiCh,
+                    mappings: _midiMappings,
+                });
                 console.log('[tone-switcher] Saved & activated MIDI config:', mappingsObj);
                 midiSaveBtn.textContent = 'Saved!';
                 setTimeout(() => { midiSaveBtn.textContent = 'Save MIDI Mapping'; }, 1500);
@@ -4777,7 +4798,12 @@ window.__feedBackDesktopAudioHooks = window.__feedBackDesktopAudioHooks || {};
         }, 500);
 
         // Start tone monitoring and preload presets after WebSocket delivers tone data
-        setTimeout(async () => {
+        setTimeout(() => {
+            if (hookState.toneAutoLoadGeneration !== generation) return;
+            // Queue behind any tone-mapping apply already rebuilding the chain
+            // (and make later ones wait for this) -- see withToneChainLock.
+            const preload = async () => {
+            // A newer song may have started while this waited for the lock.
             if (hookState.toneAutoLoadGeneration !== generation) return;
             let shouldResolveChainRebuildGuard = false;
             try {
@@ -4970,22 +4996,12 @@ window.__feedBackDesktopAudioHooks = window.__feedBackDesktopAudioHooks || {};
             if (midiConfig?.mode === 'midi' && midiConfig.vstSlotId >= 0) {
                 // MIDI PC mode — send program changes to a single VST
                 const midiMappings = midiConfig.mappings || {};
-                window._toneSwitcher = {
-                    activeTone: null,
-                    midiMode: true,
-                    switchToTone(name) {
-                        console.log('[tone-switcher] switchToTone called:', name, 'current:', this.activeTone, 'midiMode:', this.midiMode);
-                        if (name === this.activeTone) return;
-                        const program = midiMappings[name];
-                        const _api = window.feedBackDesktop?.audio;
-                        console.log('[tone-switcher] program:', program, 'api:', !!_api, 'sendMidi:', !!_api?.sendMidiToSlot, 'slotId:', midiConfig.vstSlotId);
-                        if (program !== undefined && _api?.sendMidiToSlot) {
-                            _api.sendMidiToSlot(midiConfig.vstSlotId, 0, midiConfig.channel || 1, program);
-                            console.log('[tone-switcher] MIDI PC SENT:', name, '-> program', program);
-                        }
-                        this.activeTone = name;
-                    }
-                };
+                window._toneSwitcher = window._aeMakeMidiToneSwitcher({
+                    getApi: () => window.feedBackDesktop?.audio,
+                    slotId: midiConfig.vstSlotId,
+                    channel: midiConfig.channel || 1,
+                    mappings: midiMappings,
+                });
                 // Send initial PC for base tone
                 const _apiInit = window.feedBackDesktop?.audio;
                 if (midiMappings[toneBase] !== undefined && _apiInit?.sendMidiToSlot) {
@@ -5060,6 +5076,7 @@ window.__feedBackDesktopAudioHooks = window.__feedBackDesktopAudioHooks || {};
                 window._toneSwitcher = null;
                 const toneSlotMap = {};
                 const tonePresetMap = {};
+                const tonePresetNameMap = {};
 
                 const lookupBypass = (name) => (window._aeResolveTonePresetName
                     ? window._aeResolveTonePresetName(mappings, name)
@@ -5120,6 +5137,7 @@ window.__feedBackDesktopAudioHooks = window.__feedBackDesktopAudioHooks || {};
                     }
                     toneSlotMap[toneName] = slotIds;
                     tonePresetMap[toneName] = preset;
+                    tonePresetNameMap[toneName] = presetName;
                     if (toneName !== effectiveBase && slotIds.length > 0) {
                         await api.setMultiBypass(slotIds.map(id => ({ slotId: id, bypassed: true })));
                     }
@@ -5136,23 +5154,13 @@ window.__feedBackDesktopAudioHooks = window.__feedBackDesktopAudioHooks || {};
                     activeTone: effectiveBase,
                     toneSlotMap,
                     tonePresetMap,
+                    tonePresetNameMap,
                     switchToTone(name) {
-                        if (name === this.activeTone) return;
-                        if (!this.toneSlotMap[name]) return;
-                        const bypassList = [];
-                        if (this.activeTone && this.toneSlotMap[this.activeTone]) {
-                            for (const id of this.toneSlotMap[this.activeTone]) bypassList.push({ slotId: id, bypassed: true });
-                        }
-                        for (const id of this.toneSlotMap[name]) bypassList.push({ slotId: id, bypassed: false });
-                        if (bypassList.length > 0) api.setMultiBypass(bypassList);
-                        this.activeTone = name;
-                        const newPreset = this.tonePresetMap?.[name];
-                        if (newPreset) {
-                            applyPresetGainLevels(api, newPreset);
-                            applyPresetNoiseGate(api, newPreset);
-                            applyPresetTonePolish(api, newPreset);
-                        }
-                        console.log('[tone-switcher] Switched to:', name);
+                        window._aeBypassSwitchToTone(this, name, (changes) => api.setMultiBypass(changes), (preset) => {
+                            applyPresetGainLevels(api, preset);
+                            applyPresetNoiseGate(api, preset);
+                            applyPresetTonePolish(api, preset);
+                        });
                     }
                 };
                 _preloadedToneCacheKey = getTonePreloadCacheKey();
@@ -5167,6 +5175,9 @@ window.__feedBackDesktopAudioHooks = window.__feedBackDesktopAudioHooks || {};
                 // show an empty-chain monitor warning.
                 if (shouldResolveChainRebuildGuard) await resolveChainRebuildGuard();
             }
+            };
+            const lock = window._aeWithToneChainLock;
+            void (typeof lock === 'function' ? lock(preload) : preload());
         }, 800);
         },
     };
