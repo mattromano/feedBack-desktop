@@ -76,5 +76,5 @@
   "user_ack": {
     "audit_duration": "2026-11-07: user asked to audit and set up (scope confirmed)"
   },
-  "next_action": "Phase 3: all Top 5 done in code. User to run the I-003 listening checklist on release/win-unpacked/feedback.exe (built from 36ffd5a), then check_gate.py 3 and advance to Phase 4"
+  "next_action": "Phase 3 done in code and app-checked over CDP (I-003 checks pass; MIDI chain wipe is pre-existing, deferred). User to confirm, then advance 3 and start Phase 4 (hardening)"
 }

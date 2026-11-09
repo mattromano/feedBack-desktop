@@ -82,7 +82,16 @@
           "Packaged build: MIDI PC song -> program changes reach the VST, chain is not wiped",
           "Packaged build: song with a whole-song tone lock -> locked preset holds through tone changes",
           "Packaged build: start one song then quickly another -> chain ends up with the second song's presets only (preload race)"
-        ]
+        ],
+        "automated_app_checks": {
+          "date": "2026-11-09",
+          "build": "release/win-unpacked from 36ffd5a, driven over CDP",
+          "tone_changes": "PASS (Helena, manual bypass: Twin/Mesa slots swap at 26.6/72.8/74.7 s; tonePresetNameMap present)",
+          "midi": "Program changes correct (clean->2, lead->5, back->2); chain wiped on song load - same on the previous code (A/B), pre-existing, deferred",
+          "tone_lock": "PASS (Main Lead held through tone changes)",
+          "quick_switch": "PASS 25/25 manual bypass, 25/25 Tone Automation (gaps 300-1600 ms, Helena -> Dead!)",
+          "not_covered": "How it sounds; whether the VST actually changes patch on MIDI"
+        }
       },
       "outcome": "Shared bypassSwitchToTone/makeMidiToneSwitcher (2 bypass + 3 MIDI copies folded), IIFE2 switcher gains tonePresetNameMap, IIFE2 song preload runs under window._aeWithToneChainLock. Unit tests green; packaged-build listening checklist (safety_net.manual_checks) pending with the user."
     },
