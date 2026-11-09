@@ -65,9 +65,11 @@
         "src/renderer/screen.js:4445-4464,3227-3233"
       ],
       "description": "IIFE2 copies of the bypass/MIDI switchers lack tonePresetNameMap and normalizeTimelineToneData; the IIFE2 preload is not serialized by _applyToneMappingsLock.",
-      "status": "pending",
+      "status": "done",
       "refactor_plan": "Add vm tests, export one switcher factory + chain-job lock from IIFE1, call from IIFE2; verify on the packaged build.",
-      "commits": [],
+      "commits": [
+        "36ffd5a"
+      ],
       "safety_net": {
         "type": "unit_test",
         "location": "tests/tone-switcher-parity.test.js",
@@ -81,7 +83,8 @@
           "Packaged build: song with a whole-song tone lock -> locked preset holds through tone changes",
           "Packaged build: start one song then quickly another -> chain ends up with the second song's presets only (preload race)"
         ]
-      }
+      },
+      "outcome": "Shared bypassSwitchToTone/makeMidiToneSwitcher (2 bypass + 3 MIDI copies folded), IIFE2 switcher gains tonePresetNameMap, IIFE2 song preload runs under window._aeWithToneChainLock. Unit tests green; packaged-build listening checklist (safety_net.manual_checks) pending with the user."
     },
     {
       "id": "I-004",

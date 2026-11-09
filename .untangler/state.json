@@ -76,5 +76,5 @@
   "user_ack": {
     "audit_duration": "2026-11-07: user asked to audit and set up (scope confirmed)"
   },
-  "next_action": "Phase 3: I-001, I-002, I-006, I-004 done. Next: I-003 tone switcher factory shared by both screen.js IIFEs + route IIFE2 preload through the chain lock; needs the packaged-build listening checklist"
+  "next_action": "Phase 3: all Top 5 done in code. User to run the I-003 listening checklist on release/win-unpacked/feedback.exe (built from 36ffd5a), then check_gate.py 3 and advance to Phase 4"
 }
