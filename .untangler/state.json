@@ -74,5 +74,5 @@
   "user_ack": {
     "audit_duration": "2026-11-07: user asked to audit and set up (scope confirmed)"
   },
-  "next_action": "Phase 2: plan + build a verified safety net for each Top 5 item (I-001, I-002, I-006, I-004, I-003), source-reading tests only; prove one fails when broken"
+  "next_action": "Phase 2 gate passed 11/11; user to acknowledge the safety nets (incl. I-003 manual packaged-build checklist), then advance 2 and start Phase 3 with I-001"
 }

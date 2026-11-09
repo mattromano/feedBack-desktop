@@ -1,0 +1,2054 @@
+{
+  "missing": {
+    "audio-effects:activateSegment": {
+      "kind": "handle",
+      "ret": {
+        "outcome": "no-target",
+        "status": "no-target",
+        "reason": "No audio-effects route has been loaded",
+        "payload": {
+          "routeKey": "desktop-main"
+        }
+      },
+      "logs": []
+    },
+    "audio-effects:inspectRoute": {
+      "kind": "handle",
+      "ret": {
+        "outcome": "no-target",
+        "status": "no-target",
+        "reason": "No audio-effects route has been loaded",
+        "payload": {
+          "routeKey": "0"
+        }
+      },
+      "logs": []
+    },
+    "audio-effects:loadChainPlan": {
+      "kind": "handle",
+      "ret": {
+        "outcome": "unavailable",
+        "status": "unavailable",
+        "reason": "Native audio engine is unavailable"
+      },
+      "logs": []
+    },
+    "audio-effects:releaseRoute": {
+      "kind": "handle",
+      "ret": {
+        "outcome": "no-target",
+        "status": "no-target",
+        "reason": "No audio-effects route has been loaded",
+        "payload": {
+          "routeKey": "desktop-main"
+        }
+      },
+      "logs": []
+    },
+    "audio-effects:setRouteGain": {
+      "kind": "handle",
+      "ret": {
+        "outcome": "no-target",
+        "status": "no-target",
+        "reason": "No audio-effects route has been loaded",
+        "payload": {
+          "routeKey": "desktop-main"
+        }
+      },
+      "logs": []
+    },
+    "audio-effects:setStageBypass": {
+      "kind": "handle",
+      "ret": {
+        "outcome": "no-target",
+        "status": "no-target",
+        "reason": "No audio-effects route has been loaded",
+        "payload": {
+          "routeKey": "desktop-main"
+        }
+      },
+      "logs": []
+    },
+    "audio-effects:setStageParameter": {
+      "kind": "handle",
+      "ret": {
+        "outcome": "no-target",
+        "status": "no-target",
+        "reason": "No audio-effects route has been loaded",
+        "payload": {
+          "routeKey": "desktop-main"
+        }
+      },
+      "logs": []
+    },
+    "audio:addSource": {
+      "kind": "handle",
+      "ret": -1,
+      "logs": []
+    },
+    "audio:bindInputDevice": {
+      "kind": "handle",
+      "ret": "unsupported",
+      "logs": []
+    },
+    "audio:clearChain": {
+      "kind": "handle",
+      "ret": "<undefined>",
+      "logs": []
+    },
+    "audio:clearStreamOutput": {
+      "kind": "handle",
+      "ret": "<undefined>",
+      "logs": []
+    },
+    "audio:closePluginEditor": {
+      "kind": "handle",
+      "ret": false,
+      "logs": []
+    },
+    "audio:detectNotes": {
+      "kind": "handle",
+      "ret": null,
+      "logs": []
+    },
+    "audio:getBackingDuration": {
+      "kind": "handle",
+      "ret": 0,
+      "logs": []
+    },
+    "audio:getBackingLevel": {
+      "kind": "handle",
+      "ret": 0,
+      "logs": []
+    },
+    "audio:getBackingPosition": {
+      "kind": "handle",
+      "ret": 0,
+      "logs": []
+    },
+    "audio:getBufferSizes": {
+      "kind": "handle",
+      "ret": [],
+      "logs": []
+    },
+    "audio:getChainState": {
+      "kind": "handle",
+      "ret": [],
+      "logs": []
+    },
+    "audio:getCurrentDevice": {
+      "kind": "handle",
+      "ret": null,
+      "logs": []
+    },
+    "audio:getDeviceMetrics": {
+      "kind": "handle",
+      "ret": null,
+      "logs": []
+    },
+    "audio:getDeviceTypes": {
+      "kind": "handle",
+      "ret": [],
+      "logs": []
+    },
+    "audio:getKnownPlugins": {
+      "kind": "handle",
+      "ret": [],
+      "logs": []
+    },
+    "audio:getLevels": {
+      "kind": "handle",
+      "ret": {
+        "inputLevel": 0,
+        "outputLevel": 0,
+        "inputPeak": 0,
+        "outputPeak": 0
+      },
+      "logs": []
+    },
+    "audio:getLivePitch": {
+      "kind": "handle",
+      "ret": {
+        "supported": false,
+        "cents": 0,
+        "windowMs": 0,
+        "ratio": 1,
+        "latencyMs": 0
+      },
+      "logs": []
+    },
+    "audio:getNoteVerdicts": {
+      "kind": "handle",
+      "ret": null,
+      "logs": []
+    },
+    "audio:getParameters": {
+      "kind": "handle",
+      "ret": [],
+      "logs": []
+    },
+    "audio:getPitchDetection": {
+      "kind": "handle",
+      "ret": {
+        "frequency": -1,
+        "confidence": 0,
+        "midiNote": -1,
+        "cents": 0,
+        "noteName": ""
+      },
+      "logs": []
+    },
+    "audio:getRawAudioFrame": {
+      "kind": "handle",
+      "ret": {},
+      "logs": []
+    },
+    "audio:getRawPitch": {
+      "kind": "handle",
+      "ret": {
+        "frequency": -1,
+        "confidence": 0,
+        "midiNote": -1,
+        "cents": 0,
+        "noteName": ""
+      },
+      "logs": []
+    },
+    "audio:getRendererBusMetrics": {
+      "kind": "handle",
+      "ret": null,
+      "logs": []
+    },
+    "audio:getSampleRate": {
+      "kind": "handle",
+      "ret": 48000,
+      "logs": []
+    },
+    "audio:getSampleRates": {
+      "kind": "handle",
+      "ret": [],
+      "logs": []
+    },
+    "audio:getSongBusClock": {
+      "kind": "handle",
+      "ret": null,
+      "logs": []
+    },
+    "audio:getSongBusMetrics": {
+      "kind": "handle",
+      "ret": null,
+      "logs": []
+    },
+    "audio:getSourceLevels": {
+      "kind": "handle",
+      "ret": {
+        "inputLevel": 0,
+        "outputLevel": 0,
+        "inputPeak": 0,
+        "outputPeak": 0
+      },
+      "logs": []
+    },
+    "audio:getSourceNoteVerdicts": {
+      "kind": "handle",
+      "ret": null,
+      "logs": []
+    },
+    "audio:getSourcePitchDetection": {
+      "kind": "handle",
+      "ret": {
+        "frequency": -1,
+        "confidence": 0,
+        "midiNote": -1,
+        "cents": 0,
+        "noteName": ""
+      },
+      "logs": []
+    },
+    "audio:getSourceRawAudioFrame": {
+      "kind": "handle",
+      "ret": {},
+      "logs": []
+    },
+    "audio:getSourceRawPitch": {
+      "kind": "handle",
+      "ret": {
+        "frequency": -1,
+        "confidence": 0,
+        "midiNote": -1,
+        "cents": 0,
+        "noteName": ""
+      },
+      "logs": []
+    },
+    "audio:getStreamOverflowCount": {
+      "kind": "handle",
+      "ret": 0,
+      "logs": []
+    },
+    "audio:getStreamSinkLevel": {
+      "kind": "handle",
+      "ret": 0,
+      "logs": []
+    },
+    "audio:getStreamUnderflowCount": {
+      "kind": "handle",
+      "ret": 0,
+      "logs": []
+    },
+    "audio:isAudioRunning": {
+      "kind": "handle",
+      "ret": false,
+      "logs": []
+    },
+    "audio:isAvailable": {
+      "kind": "handle",
+      "ret": false,
+      "logs": []
+    },
+    "audio:isBackingPlaying": {
+      "kind": "handle",
+      "ret": false,
+      "logs": []
+    },
+    "audio:isMlNoteDetection": {
+      "kind": "handle",
+      "ret": false,
+      "logs": []
+    },
+    "audio:isMonitorMuted": {
+      "kind": "handle",
+      "ret": true,
+      "logs": []
+    },
+    "audio:isStreamOutputActive": {
+      "kind": "handle",
+      "ret": false,
+      "logs": []
+    },
+    "audio:listInputDevices": {
+      "kind": "handle",
+      "ret": null,
+      "logs": []
+    },
+    "audio:listSources": {
+      "kind": "handle",
+      "ret": null,
+      "logs": []
+    },
+    "audio:loadBackingTrack": {
+      "kind": "handle",
+      "ret": false,
+      "logs": []
+    },
+    "audio:loadDeviceSettings": {
+      "kind": "handle",
+      "ret": null,
+      "logs": []
+    },
+    "audio:loadIR": {
+      "kind": "handle",
+      "ret": -1,
+      "logs": []
+    },
+    "audio:loadNAMModel": {
+      "kind": "handle",
+      "ret": -1,
+      "logs": []
+    },
+    "audio:loadPluginList": {
+      "kind": "handle",
+      "ret": "<undefined>",
+      "logs": []
+    },
+    "audio:loadPreset": {
+      "kind": "handle",
+      "ret": {
+        "success": false,
+        "error": "No audio"
+      },
+      "logs": []
+    },
+    "audio:loadVST": {
+      "kind": "handle",
+      "ret": -1,
+      "logs": []
+    },
+    "audio:moveProcessor": {
+      "kind": "handle",
+      "ret": "<undefined>",
+      "logs": []
+    },
+    "audio:openPluginEditor": {
+      "kind": "handle",
+      "ret": false,
+      "logs": []
+    },
+    "audio:probeDeviceOptions": {
+      "kind": "handle",
+      "ret": {
+        "type": "",
+        "inputType": "",
+        "outputType": "",
+        "input": "x",
+        "output": "",
+        "inputChannels": [],
+        "outputChannels": [],
+        "sampleRates": [],
+        "bufferSizes": [],
+        "compatible": false,
+        "error": "Native audio addon not available"
+      },
+      "logs": []
+    },
+    "audio:pushRendererAudio": {
+      "kind": "on",
+      "ret": "<undefined>",
+      "logs": []
+    },
+    "audio:pushSongAudio": {
+      "kind": "on",
+      "ret": "<undefined>",
+      "logs": []
+    },
+    "audio:removeProcessor": {
+      "kind": "handle",
+      "ret": "<undefined>",
+      "logs": []
+    },
+    "audio:removeSource": {
+      "kind": "handle",
+      "ret": false,
+      "logs": []
+    },
+    "audio:replaceIR": {
+      "kind": "handle",
+      "ret": false,
+      "logs": []
+    },
+    "audio:resetPeaks": {
+      "kind": "handle",
+      "ret": "<undefined>",
+      "logs": []
+    },
+    "audio:saveDeviceSettings": {
+      "kind": "handle",
+      "ret": false,
+      "logs": []
+    },
+    "audio:savePluginList": {
+      "kind": "handle",
+      "ret": "<undefined>",
+      "logs": []
+    },
+    "audio:savePreset": {
+      "kind": "handle",
+      "ret": null,
+      "logs": []
+    },
+    "audio:scanPlugins": {
+      "kind": "handle",
+      "ret": [],
+      "logs": []
+    },
+    "audio:scoreChord": {
+      "kind": "handle",
+      "ret": null,
+      "logs": []
+    },
+    "audio:scoreSourceChord": {
+      "kind": "handle",
+      "ret": null,
+      "logs": []
+    },
+    "audio:seekBacking": {
+      "kind": "handle",
+      "ret": "<undefined>",
+      "logs": []
+    },
+    "audio:sendMidiToSlot": {
+      "kind": "handle",
+      "ret": false,
+      "logs": []
+    },
+    "audio:setBackingSpeed": {
+      "kind": "handle",
+      "ret": false,
+      "logs": []
+    },
+    "audio:setBranch": {
+      "kind": "handle",
+      "ret": "<undefined>",
+      "logs": []
+    },
+    "audio:setBranchSrc": {
+      "kind": "handle",
+      "ret": "<undefined>",
+      "logs": []
+    },
+    "audio:setBypass": {
+      "kind": "handle",
+      "ret": "<undefined>",
+      "logs": []
+    },
+    "audio:setChart": {
+      "kind": "handle",
+      "ret": null,
+      "logs": []
+    },
+    "audio:setDevice": {
+      "kind": "handle",
+      "ret": {
+        "ok": false,
+        "error": "Native audio addon not available",
+        "duplex": true
+      },
+      "logs": []
+    },
+    "audio:setDeviceType": {
+      "kind": "handle",
+      "ret": false,
+      "logs": []
+    },
+    "audio:setGain": {
+      "kind": "handle",
+      "ret": "<undefined>",
+      "logs": []
+    },
+    "audio:setInputChannel": {
+      "kind": "handle",
+      "ret": "<undefined>",
+      "logs": []
+    },
+    "audio:setLivePitch": {
+      "kind": "handle",
+      "ret": false,
+      "logs": []
+    },
+    "audio:setMonitorKill": {
+      "kind": "handle",
+      "ret": "<undefined>",
+      "logs": []
+    },
+    "audio:setMonitorMute": {
+      "kind": "handle",
+      "ret": "<undefined>",
+      "logs": []
+    },
+    "audio:setMonitorMuteSuppressed": {
+      "kind": "handle",
+      "ret": "<undefined>",
+      "logs": []
+    },
+    "audio:setMultiBypass": {
+      "kind": "handle",
+      "ret": false,
+      "logs": []
+    },
+    "audio:setNoiseGate": {
+      "kind": "handle",
+      "ret": "<undefined>",
+      "logs": []
+    },
+    "audio:setNoteDetectionEnabled": {
+      "kind": "handle",
+      "ret": "<undefined>",
+      "logs": []
+    },
+    "audio:setOutputDeviceType": {
+      "kind": "handle",
+      "ret": false,
+      "logs": []
+    },
+    "audio:setPan": {
+      "kind": "handle",
+      "ret": "<undefined>",
+      "logs": []
+    },
+    "audio:setParameter": {
+      "kind": "handle",
+      "ret": "<undefined>",
+      "logs": []
+    },
+    "audio:setPostGain": {
+      "kind": "handle",
+      "ret": "<undefined>",
+      "logs": []
+    },
+    "audio:setRendererBus": {
+      "kind": "handle",
+      "ret": "<undefined>",
+      "logs": []
+    },
+    "audio:setSlotState": {
+      "kind": "handle",
+      "ret": false,
+      "logs": []
+    },
+    "audio:setSongBus": {
+      "kind": "handle",
+      "ret": "<undefined>",
+      "logs": []
+    },
+    "audio:setSourceChart": {
+      "kind": "handle",
+      "ret": null,
+      "logs": []
+    },
+    "audio:setSourceInputChannel": {
+      "kind": "handle",
+      "ret": "<undefined>",
+      "logs": []
+    },
+    "audio:setSourceMonitorMute": {
+      "kind": "handle",
+      "ret": "<undefined>",
+      "logs": []
+    },
+    "audio:setSourceVerifierOffset": {
+      "kind": "handle",
+      "ret": "<undefined>",
+      "logs": []
+    },
+    "audio:setStreamBus": {
+      "kind": "handle",
+      "ret": "<undefined>",
+      "logs": []
+    },
+    "audio:setStreamBusGain": {
+      "kind": "handle",
+      "ret": "<undefined>",
+      "logs": []
+    },
+    "audio:setStreamOutputDevice": {
+      "kind": "handle",
+      "ret": "unsupported",
+      "logs": []
+    },
+    "audio:setTonePolish": {
+      "kind": "handle",
+      "ret": "<undefined>",
+      "logs": []
+    },
+    "audio:startAudio": {
+      "kind": "handle",
+      "ret": "<undefined>",
+      "logs": []
+    },
+    "audio:startBacking": {
+      "kind": "handle",
+      "ret": "<undefined>",
+      "logs": []
+    },
+    "audio:stopAudio": {
+      "kind": "handle",
+      "ret": "<undefined>",
+      "logs": []
+    },
+    "audio:stopBacking": {
+      "kind": "handle",
+      "ret": "<undefined>",
+      "logs": []
+    },
+    "audio:unbindInputDevice": {
+      "kind": "handle",
+      "ret": false,
+      "logs": []
+    },
+    "debug:isEnabled": {
+      "kind": "handle",
+      "ret": false,
+      "logs": []
+    }
+  },
+  "throws": {
+    "audio-effects:activateSegment": {
+      "kind": "handle",
+      "ret": {
+        "outcome": "no-target",
+        "status": "no-target",
+        "reason": "No audio-effects route has been loaded",
+        "payload": {
+          "routeKey": "desktop-main"
+        }
+      },
+      "logs": []
+    },
+    "audio-effects:inspectRoute": {
+      "kind": "handle",
+      "ret": {
+        "outcome": "no-target",
+        "status": "no-target",
+        "reason": "No audio-effects route has been loaded",
+        "payload": {
+          "routeKey": "0"
+        }
+      },
+      "logs": []
+    },
+    "audio-effects:loadChainPlan": {
+      "kind": "handle",
+      "ret": {
+        "outcome": "failed",
+        "status": "failed",
+        "reason": "Audio-effects chain plan validation failed",
+        "payload": {
+          "errors": [
+            "Missing audio-effects chain plan"
+          ]
+        }
+      },
+      "logs": []
+    },
+    "audio-effects:releaseRoute": {
+      "kind": "handle",
+      "ret": {
+        "outcome": "no-target",
+        "status": "no-target",
+        "reason": "No audio-effects route has been loaded",
+        "payload": {
+          "routeKey": "desktop-main"
+        }
+      },
+      "logs": []
+    },
+    "audio-effects:setRouteGain": {
+      "kind": "handle",
+      "ret": {
+        "outcome": "no-target",
+        "status": "no-target",
+        "reason": "No audio-effects route has been loaded",
+        "payload": {
+          "routeKey": "desktop-main"
+        }
+      },
+      "logs": []
+    },
+    "audio-effects:setStageBypass": {
+      "kind": "handle",
+      "ret": {
+        "outcome": "no-target",
+        "status": "no-target",
+        "reason": "No audio-effects route has been loaded",
+        "payload": {
+          "routeKey": "desktop-main"
+        }
+      },
+      "logs": []
+    },
+    "audio-effects:setStageParameter": {
+      "kind": "handle",
+      "ret": {
+        "outcome": "no-target",
+        "status": "no-target",
+        "reason": "No audio-effects route has been loaded",
+        "payload": {
+          "routeKey": "desktop-main"
+        }
+      },
+      "logs": []
+    },
+    "audio:addSource": {
+      "kind": "handle",
+      "ret": -1,
+      "logs": [
+        [
+          "warn",
+          "[audio] addSource failed: boom:addSource"
+        ]
+      ]
+    },
+    "audio:bindInputDevice": {
+      "kind": "handle",
+      "ret": "invalid deviceKey",
+      "logs": []
+    },
+    "audio:clearChain": {
+      "kind": "handle",
+      "rejected": "boom:clearChain",
+      "logs": []
+    },
+    "audio:clearStreamOutput": {
+      "kind": "handle",
+      "threw": "boom:clearStreamOutput",
+      "logs": []
+    },
+    "audio:closePluginEditor": {
+      "kind": "handle",
+      "threw": "boom:closePluginEditor",
+      "logs": []
+    },
+    "audio:detectNotes": {
+      "kind": "handle",
+      "ret": null,
+      "logs": [
+        [
+          "warn",
+          "[audio] detectNotes failed: boom:detectNotes"
+        ]
+      ]
+    },
+    "audio:getBackingDuration": {
+      "kind": "handle",
+      "threw": "boom:getBackingDuration",
+      "logs": []
+    },
+    "audio:getBackingLevel": {
+      "kind": "handle",
+      "threw": "boom:getBackingLevel",
+      "logs": []
+    },
+    "audio:getBackingPosition": {
+      "kind": "handle",
+      "threw": "boom:getBackingPosition",
+      "logs": []
+    },
+    "audio:getBufferSizes": {
+      "kind": "handle",
+      "threw": "boom:getBufferSizes",
+      "logs": []
+    },
+    "audio:getChainState": {
+      "kind": "handle",
+      "threw": "boom:getChainState",
+      "logs": []
+    },
+    "audio:getCurrentDevice": {
+      "kind": "handle",
+      "threw": "boom:getCurrentDevice",
+      "logs": []
+    },
+    "audio:getDeviceMetrics": {
+      "kind": "handle",
+      "ret": null,
+      "logs": [
+        [
+          "warn",
+          "[audio] getDeviceMetrics failed: boom:getDeviceMetrics"
+        ]
+      ]
+    },
+    "audio:getDeviceTypes": {
+      "kind": "handle",
+      "threw": "boom:getDeviceTypes",
+      "logs": []
+    },
+    "audio:getKnownPlugins": {
+      "kind": "handle",
+      "threw": "boom:getKnownPlugins",
+      "logs": []
+    },
+    "audio:getLevels": {
+      "kind": "handle",
+      "threw": "boom:getLevels",
+      "logs": []
+    },
+    "audio:getLivePitch": {
+      "kind": "handle",
+      "ret": {
+        "supported": false,
+        "cents": 0,
+        "windowMs": 0,
+        "ratio": 1,
+        "latencyMs": 0
+      },
+      "logs": [
+        [
+          "warn",
+          "[audio] getLivePitch failed: boom:getLivePitch"
+        ]
+      ]
+    },
+    "audio:getNoteVerdicts": {
+      "kind": "handle",
+      "ret": null,
+      "logs": [
+        [
+          "warn",
+          "[audio] getNoteVerdicts failed: boom:getNoteVerdicts"
+        ]
+      ]
+    },
+    "audio:getParameters": {
+      "kind": "handle",
+      "threw": "boom:getParameters",
+      "logs": []
+    },
+    "audio:getPitchDetection": {
+      "kind": "handle",
+      "threw": "boom:getPitchDetection",
+      "logs": []
+    },
+    "audio:getRawAudioFrame": {
+      "kind": "handle",
+      "ret": {},
+      "logs": []
+    },
+    "audio:getRawPitch": {
+      "kind": "handle",
+      "ret": {
+        "frequency": -1,
+        "confidence": 0,
+        "midiNote": -1,
+        "cents": 0,
+        "noteName": ""
+      },
+      "logs": []
+    },
+    "audio:getRendererBusMetrics": {
+      "kind": "handle",
+      "threw": "boom:getRendererBusMetrics",
+      "logs": []
+    },
+    "audio:getSampleRate": {
+      "kind": "handle",
+      "ret": 48000,
+      "logs": []
+    },
+    "audio:getSampleRates": {
+      "kind": "handle",
+      "threw": "boom:getSampleRates",
+      "logs": []
+    },
+    "audio:getSongBusClock": {
+      "kind": "handle",
+      "threw": "boom:getSongBusClock",
+      "logs": []
+    },
+    "audio:getSongBusMetrics": {
+      "kind": "handle",
+      "threw": "boom:getSongBusMetrics",
+      "logs": []
+    },
+    "audio:getSourceLevels": {
+      "kind": "handle",
+      "ret": {
+        "inputLevel": 0,
+        "outputLevel": 0,
+        "inputPeak": 0,
+        "outputPeak": 0
+      },
+      "logs": [
+        [
+          "warn",
+          "[audio] getSourceLevels failed: boom:getSourceLevels"
+        ]
+      ]
+    },
+    "audio:getSourceNoteVerdicts": {
+      "kind": "handle",
+      "ret": null,
+      "logs": [
+        [
+          "warn",
+          "[audio] getSourceNoteVerdicts failed: boom:getSourceNoteVerdicts"
+        ]
+      ]
+    },
+    "audio:getSourcePitchDetection": {
+      "kind": "handle",
+      "ret": {
+        "frequency": -1,
+        "confidence": 0,
+        "midiNote": -1,
+        "cents": 0,
+        "noteName": ""
+      },
+      "logs": [
+        [
+          "warn",
+          "[audio] getSourcePitchDetection failed: boom:getSourcePitchDetection"
+        ]
+      ]
+    },
+    "audio:getSourceRawAudioFrame": {
+      "kind": "handle",
+      "ret": {},
+      "logs": [
+        [
+          "warn",
+          "[audio] getSourceRawAudioFrame failed: boom:getSourceRawAudioFrame"
+        ]
+      ]
+    },
+    "audio:getSourceRawPitch": {
+      "kind": "handle",
+      "ret": {
+        "frequency": -1,
+        "confidence": 0,
+        "midiNote": -1,
+        "cents": 0,
+        "noteName": ""
+      },
+      "logs": [
+        [
+          "warn",
+          "[audio] getSourceRawPitch failed: boom:getSourceRawPitchDetection"
+        ]
+      ]
+    },
+    "audio:getStreamOverflowCount": {
+      "kind": "handle",
+      "threw": "boom:getStreamOverflowCount",
+      "logs": []
+    },
+    "audio:getStreamSinkLevel": {
+      "kind": "handle",
+      "threw": "boom:getStreamSinkLevel",
+      "logs": []
+    },
+    "audio:getStreamUnderflowCount": {
+      "kind": "handle",
+      "threw": "boom:getStreamUnderflowCount",
+      "logs": []
+    },
+    "audio:isAudioRunning": {
+      "kind": "handle",
+      "threw": "boom:isAudioRunning",
+      "logs": []
+    },
+    "audio:isAvailable": {
+      "kind": "handle",
+      "ret": true,
+      "logs": []
+    },
+    "audio:isBackingPlaying": {
+      "kind": "handle",
+      "threw": "boom:isBackingPlaying",
+      "logs": []
+    },
+    "audio:isMlNoteDetection": {
+      "kind": "handle",
+      "ret": false,
+      "logs": []
+    },
+    "audio:isMonitorMuted": {
+      "kind": "handle",
+      "threw": "boom:isMonitorMuted",
+      "logs": []
+    },
+    "audio:isStreamOutputActive": {
+      "kind": "handle",
+      "threw": "boom:isStreamOutputActive",
+      "logs": []
+    },
+    "audio:listInputDevices": {
+      "kind": "handle",
+      "ret": null,
+      "logs": [
+        [
+          "warn",
+          "[audio] listInputDevices failed: boom:listInputDevices"
+        ]
+      ]
+    },
+    "audio:listSources": {
+      "kind": "handle",
+      "ret": null,
+      "logs": [
+        [
+          "warn",
+          "[audio] listSources failed: boom:listSources"
+        ]
+      ]
+    },
+    "audio:loadBackingTrack": {
+      "kind": "handle",
+      "threw": "boom:loadBackingTrack",
+      "logs": []
+    },
+    "audio:loadDeviceSettings": {
+      "kind": "handle",
+      "ret": null,
+      "logs": []
+    },
+    "audio:loadIR": {
+      "kind": "handle",
+      "rejected": "boom:loadIR",
+      "logs": []
+    },
+    "audio:loadNAMModel": {
+      "kind": "handle",
+      "rejected": "boom:loadNAMModel",
+      "logs": []
+    },
+    "audio:loadPluginList": {
+      "kind": "handle",
+      "threw": "boom:loadPluginList",
+      "logs": []
+    },
+    "audio:loadPreset": {
+      "kind": "handle",
+      "rejected": "boom:loadPreset",
+      "logs": []
+    },
+    "audio:loadVST": {
+      "kind": "handle",
+      "rejected": "boom:loadVST",
+      "logs": []
+    },
+    "audio:moveProcessor": {
+      "kind": "handle",
+      "rejected": "boom:moveProcessor",
+      "logs": []
+    },
+    "audio:openPluginEditor": {
+      "kind": "handle",
+      "threw": "boom:getChainState",
+      "logs": []
+    },
+    "audio:probeDeviceOptions": {
+      "kind": "handle",
+      "ret": {
+        "type": "",
+        "inputType": "",
+        "outputType": "",
+        "input": "x",
+        "output": "",
+        "inputChannels": [],
+        "outputChannels": [],
+        "sampleRates": [],
+        "bufferSizes": [],
+        "compatible": false,
+        "error": "boom:probeDeviceOptions"
+      },
+      "logs": [
+        [
+          "warn",
+          "[audio] probeDeviceOptions threw: boom:probeDeviceOptions"
+        ]
+      ]
+    },
+    "audio:pushRendererAudio": {
+      "kind": "on",
+      "ret": "<undefined>",
+      "logs": []
+    },
+    "audio:pushSongAudio": {
+      "kind": "on",
+      "ret": "<undefined>",
+      "logs": []
+    },
+    "audio:removeProcessor": {
+      "kind": "handle",
+      "rejected": "boom:removeProcessor",
+      "logs": []
+    },
+    "audio:removeSource": {
+      "kind": "handle",
+      "ret": false,
+      "logs": [
+        [
+          "warn",
+          "[audio] removeSource failed: boom:removeSource"
+        ]
+      ]
+    },
+    "audio:replaceIR": {
+      "kind": "handle",
+      "rejected": "boom:replaceIR",
+      "logs": []
+    },
+    "audio:resetPeaks": {
+      "kind": "handle",
+      "threw": "boom:resetPeaks",
+      "logs": []
+    },
+    "audio:saveDeviceSettings": {
+      "kind": "handle",
+      "ret": false,
+      "logs": []
+    },
+    "audio:savePluginList": {
+      "kind": "handle",
+      "threw": "boom:savePluginList",
+      "logs": []
+    },
+    "audio:savePreset": {
+      "kind": "handle",
+      "threw": "boom:savePreset",
+      "logs": []
+    },
+    "audio:scanPlugins": {
+      "kind": "handle",
+      "rejected": "boom:scanPlugins",
+      "logs": []
+    },
+    "audio:scoreChord": {
+      "kind": "handle",
+      "ret": null,
+      "logs": [
+        [
+          "warn",
+          "[audio] scoreChord failed: boom:scoreChord"
+        ]
+      ]
+    },
+    "audio:scoreSourceChord": {
+      "kind": "handle",
+      "ret": null,
+      "logs": [
+        [
+          "warn",
+          "[audio] scoreSourceChord failed: boom:scoreSourceChord"
+        ]
+      ]
+    },
+    "audio:seekBacking": {
+      "kind": "handle",
+      "threw": "boom:seekBacking",
+      "logs": []
+    },
+    "audio:sendMidiToSlot": {
+      "kind": "handle",
+      "threw": "boom:sendMidiToSlot",
+      "logs": []
+    },
+    "audio:setBackingSpeed": {
+      "kind": "handle",
+      "ret": false,
+      "logs": []
+    },
+    "audio:setBranch": {
+      "kind": "handle",
+      "threw": "boom:setBranch",
+      "logs": []
+    },
+    "audio:setBranchSrc": {
+      "kind": "handle",
+      "threw": "boom:setBranchSrc",
+      "logs": []
+    },
+    "audio:setBypass": {
+      "kind": "handle",
+      "threw": "boom:setBypass",
+      "logs": []
+    },
+    "audio:setChart": {
+      "kind": "handle",
+      "ret": null,
+      "logs": [
+        [
+          "warn",
+          "[audio] setChart failed: boom:setChart"
+        ]
+      ]
+    },
+    "audio:setDevice": {
+      "kind": "handle",
+      "ret": {
+        "ok": false,
+        "error": "boom:setDevice",
+        "duplex": true
+      },
+      "logs": [
+        [
+          "warn",
+          "[audio] setDevice threw: boom:setDevice"
+        ]
+      ]
+    },
+    "audio:setDeviceType": {
+      "kind": "handle",
+      "threw": "boom:setDeviceType",
+      "logs": []
+    },
+    "audio:setGain": {
+      "kind": "handle",
+      "threw": "boom:setGain",
+      "logs": []
+    },
+    "audio:setInputChannel": {
+      "kind": "handle",
+      "threw": "boom:setInputChannel",
+      "logs": []
+    },
+    "audio:setLivePitch": {
+      "kind": "handle",
+      "ret": false,
+      "logs": []
+    },
+    "audio:setMonitorKill": {
+      "kind": "handle",
+      "threw": "boom:setMonitorKill",
+      "logs": []
+    },
+    "audio:setMonitorMute": {
+      "kind": "handle",
+      "threw": "boom:setMonitorMute",
+      "logs": []
+    },
+    "audio:setMonitorMuteSuppressed": {
+      "kind": "handle",
+      "threw": "boom:setMonitorMuteSuppressed",
+      "logs": []
+    },
+    "audio:setMultiBypass": {
+      "kind": "handle",
+      "threw": "boom:setMultiBypass",
+      "logs": []
+    },
+    "audio:setNoiseGate": {
+      "kind": "handle",
+      "threw": "boom:setNoiseGate",
+      "logs": []
+    },
+    "audio:setNoteDetectionEnabled": {
+      "kind": "handle",
+      "ret": "<undefined>",
+      "logs": [
+        [
+          "warn",
+          "[audio] setNoteDetectionEnabled failed: boom:setNoteDetectionEnabled"
+        ]
+      ]
+    },
+    "audio:setOutputDeviceType": {
+      "kind": "handle",
+      "ret": false,
+      "logs": [
+        [
+          "warn",
+          "[audio] setOutputDeviceType failed: boom:setOutputDeviceType"
+        ]
+      ]
+    },
+    "audio:setPan": {
+      "kind": "handle",
+      "threw": "boom:setPan",
+      "logs": []
+    },
+    "audio:setParameter": {
+      "kind": "handle",
+      "threw": "boom:setParameter",
+      "logs": []
+    },
+    "audio:setPostGain": {
+      "kind": "handle",
+      "threw": "boom:setPostGain",
+      "logs": []
+    },
+    "audio:setRendererBus": {
+      "kind": "handle",
+      "threw": "boom:setRendererBus",
+      "logs": []
+    },
+    "audio:setSlotState": {
+      "kind": "handle",
+      "ret": false,
+      "logs": [
+        [
+          "warn",
+          "[audio-bridge] setSlotState threw: Error: boom:setSlotState"
+        ]
+      ]
+    },
+    "audio:setSongBus": {
+      "kind": "handle",
+      "threw": "boom:setSongBus",
+      "logs": []
+    },
+    "audio:setSourceChart": {
+      "kind": "handle",
+      "ret": false,
+      "logs": [
+        [
+          "warn",
+          "[audio] setSourceChart failed: boom:setSourceChart"
+        ]
+      ]
+    },
+    "audio:setSourceInputChannel": {
+      "kind": "handle",
+      "ret": "<undefined>",
+      "logs": []
+    },
+    "audio:setSourceMonitorMute": {
+      "kind": "handle",
+      "ret": "<undefined>",
+      "logs": []
+    },
+    "audio:setSourceVerifierOffset": {
+      "kind": "handle",
+      "ret": "<undefined>",
+      "logs": []
+    },
+    "audio:setStreamBus": {
+      "kind": "handle",
+      "threw": "boom:setStreamBus",
+      "logs": []
+    },
+    "audio:setStreamBusGain": {
+      "kind": "handle",
+      "threw": "boom:setStreamBusGain",
+      "logs": []
+    },
+    "audio:setStreamOutputDevice": {
+      "kind": "handle",
+      "ret": "invalid arguments",
+      "logs": []
+    },
+    "audio:setTonePolish": {
+      "kind": "handle",
+      "threw": "boom:setTonePolish",
+      "logs": []
+    },
+    "audio:startAudio": {
+      "kind": "handle",
+      "threw": "boom:startAudio",
+      "logs": []
+    },
+    "audio:startBacking": {
+      "kind": "handle",
+      "threw": "boom:startBacking",
+      "logs": []
+    },
+    "audio:stopAudio": {
+      "kind": "handle",
+      "threw": "boom:stopAudio",
+      "logs": []
+    },
+    "audio:stopBacking": {
+      "kind": "handle",
+      "threw": "boom:stopBacking",
+      "logs": []
+    },
+    "audio:unbindInputDevice": {
+      "kind": "handle",
+      "ret": false,
+      "logs": []
+    },
+    "debug:isEnabled": {
+      "kind": "handle",
+      "ret": false,
+      "logs": []
+    }
+  },
+  "returns": {
+    "audio-effects:activateSegment": {
+      "kind": "handle",
+      "ret": {
+        "outcome": "no-target",
+        "status": "no-target",
+        "reason": "No audio-effects route has been loaded",
+        "payload": {
+          "routeKey": "desktop-main"
+        }
+      },
+      "logs": []
+    },
+    "audio-effects:inspectRoute": {
+      "kind": "handle",
+      "ret": {
+        "outcome": "no-target",
+        "status": "no-target",
+        "reason": "No audio-effects route has been loaded",
+        "payload": {
+          "routeKey": "0"
+        }
+      },
+      "logs": []
+    },
+    "audio-effects:loadChainPlan": {
+      "kind": "handle",
+      "ret": {
+        "outcome": "failed",
+        "status": "failed",
+        "reason": "Audio-effects chain plan validation failed",
+        "payload": {
+          "errors": [
+            "Missing audio-effects chain plan"
+          ]
+        }
+      },
+      "logs": []
+    },
+    "audio-effects:releaseRoute": {
+      "kind": "handle",
+      "ret": {
+        "outcome": "no-target",
+        "status": "no-target",
+        "reason": "No audio-effects route has been loaded",
+        "payload": {
+          "routeKey": "desktop-main"
+        }
+      },
+      "logs": []
+    },
+    "audio-effects:setRouteGain": {
+      "kind": "handle",
+      "ret": {
+        "outcome": "no-target",
+        "status": "no-target",
+        "reason": "No audio-effects route has been loaded",
+        "payload": {
+          "routeKey": "desktop-main"
+        }
+      },
+      "logs": []
+    },
+    "audio-effects:setStageBypass": {
+      "kind": "handle",
+      "ret": {
+        "outcome": "no-target",
+        "status": "no-target",
+        "reason": "No audio-effects route has been loaded",
+        "payload": {
+          "routeKey": "desktop-main"
+        }
+      },
+      "logs": []
+    },
+    "audio-effects:setStageParameter": {
+      "kind": "handle",
+      "ret": {
+        "outcome": "no-target",
+        "status": "no-target",
+        "reason": "No audio-effects route has been loaded",
+        "payload": {
+          "routeKey": "desktop-main"
+        }
+      },
+      "logs": []
+    },
+    "audio:addSource": {
+      "kind": "handle",
+      "ret": "ret:addSource:2",
+      "logs": []
+    },
+    "audio:bindInputDevice": {
+      "kind": "handle",
+      "ret": "invalid deviceKey",
+      "logs": []
+    },
+    "audio:clearChain": {
+      "kind": "handle",
+      "ret": "<undefined>",
+      "logs": []
+    },
+    "audio:clearStreamOutput": {
+      "kind": "handle",
+      "ret": "<undefined>",
+      "logs": []
+    },
+    "audio:closePluginEditor": {
+      "kind": "handle",
+      "ret": "ret:closePluginEditor:1",
+      "logs": []
+    },
+    "audio:detectNotes": {
+      "kind": "handle",
+      "ret": "ret:detectNotes:0",
+      "logs": []
+    },
+    "audio:getBackingDuration": {
+      "kind": "handle",
+      "ret": "ret:getBackingDuration:0",
+      "logs": []
+    },
+    "audio:getBackingLevel": {
+      "kind": "handle",
+      "ret": "ret:getBackingLevel:0",
+      "logs": []
+    },
+    "audio:getBackingPosition": {
+      "kind": "handle",
+      "ret": "ret:getBackingPosition:0",
+      "logs": []
+    },
+    "audio:getBufferSizes": {
+      "kind": "handle",
+      "ret": "ret:getBufferSizes:0",
+      "logs": []
+    },
+    "audio:getChainState": {
+      "kind": "handle",
+      "ret": "ret:getChainState:0",
+      "logs": []
+    },
+    "audio:getCurrentDevice": {
+      "kind": "handle",
+      "ret": "ret:getCurrentDevice:0",
+      "logs": []
+    },
+    "audio:getDeviceMetrics": {
+      "kind": "handle",
+      "ret": "ret:getDeviceMetrics:0",
+      "logs": []
+    },
+    "audio:getDeviceTypes": {
+      "kind": "handle",
+      "threw": "result.map is not a function",
+      "logs": []
+    },
+    "audio:getKnownPlugins": {
+      "kind": "handle",
+      "ret": "ret:getKnownPlugins:0",
+      "logs": []
+    },
+    "audio:getLevels": {
+      "kind": "handle",
+      "ret": "ret:getLevels:0",
+      "logs": []
+    },
+    "audio:getLivePitch": {
+      "kind": "handle",
+      "ret": "ret:getLivePitch:0",
+      "logs": []
+    },
+    "audio:getNoteVerdicts": {
+      "kind": "handle",
+      "ret": "ret:getNoteVerdicts:0",
+      "logs": []
+    },
+    "audio:getParameters": {
+      "kind": "handle",
+      "ret": "ret:getParameters:1",
+      "logs": []
+    },
+    "audio:getPitchDetection": {
+      "kind": "handle",
+      "ret": "ret:getPitchDetection:0",
+      "logs": []
+    },
+    "audio:getRawAudioFrame": {
+      "kind": "handle",
+      "ret": "ret:getRawAudioFrame:1",
+      "logs": []
+    },
+    "audio:getRawPitch": {
+      "kind": "handle",
+      "ret": "ret:getRawPitchDetection:0",
+      "logs": []
+    },
+    "audio:getRendererBusMetrics": {
+      "kind": "handle",
+      "ret": "ret:getRendererBusMetrics:0",
+      "logs": []
+    },
+    "audio:getSampleRate": {
+      "kind": "handle",
+      "ret": 48000,
+      "logs": []
+    },
+    "audio:getSampleRates": {
+      "kind": "handle",
+      "ret": "ret:getSampleRates:0",
+      "logs": []
+    },
+    "audio:getSongBusClock": {
+      "kind": "handle",
+      "ret": "ret:getSongBusClock:0",
+      "logs": []
+    },
+    "audio:getSongBusMetrics": {
+      "kind": "handle",
+      "ret": "ret:getSongBusMetrics:0",
+      "logs": []
+    },
+    "audio:getSourceLevels": {
+      "kind": "handle",
+      "ret": "ret:getSourceLevels:1",
+      "logs": []
+    },
+    "audio:getSourceNoteVerdicts": {
+      "kind": "handle",
+      "ret": "ret:getSourceNoteVerdicts:1",
+      "logs": []
+    },
+    "audio:getSourcePitchDetection": {
+      "kind": "handle",
+      "ret": "ret:getSourcePitchDetection:1",
+      "logs": []
+    },
+    "audio:getSourceRawAudioFrame": {
+      "kind": "handle",
+      "ret": "ret:getSourceRawAudioFrame:2",
+      "logs": []
+    },
+    "audio:getSourceRawPitch": {
+      "kind": "handle",
+      "ret": "ret:getSourceRawPitchDetection:1",
+      "logs": []
+    },
+    "audio:getStreamOverflowCount": {
+      "kind": "handle",
+      "ret": "ret:getStreamOverflowCount:0",
+      "logs": []
+    },
+    "audio:getStreamSinkLevel": {
+      "kind": "handle",
+      "ret": "ret:getStreamSinkLevel:0",
+      "logs": []
+    },
+    "audio:getStreamUnderflowCount": {
+      "kind": "handle",
+      "ret": "ret:getStreamUnderflowCount:0",
+      "logs": []
+    },
+    "audio:isAudioRunning": {
+      "kind": "handle",
+      "ret": "ret:isAudioRunning:0",
+      "logs": []
+    },
+    "audio:isAvailable": {
+      "kind": "handle",
+      "ret": true,
+      "logs": []
+    },
+    "audio:isBackingPlaying": {
+      "kind": "handle",
+      "ret": "ret:isBackingPlaying:0",
+      "logs": []
+    },
+    "audio:isMlNoteDetection": {
+      "kind": "handle",
+      "ret": false,
+      "logs": []
+    },
+    "audio:isMonitorMuted": {
+      "kind": "handle",
+      "ret": "ret:isMonitorMuted:0",
+      "logs": []
+    },
+    "audio:isStreamOutputActive": {
+      "kind": "handle",
+      "ret": "ret:isStreamOutputActive:0",
+      "logs": []
+    },
+    "audio:listInputDevices": {
+      "kind": "handle",
+      "ret": "ret:listInputDevices:0",
+      "logs": []
+    },
+    "audio:listSources": {
+      "kind": "handle",
+      "ret": "ret:listSources:0",
+      "logs": []
+    },
+    "audio:loadBackingTrack": {
+      "kind": "handle",
+      "ret": "ret:loadBackingTrack:1",
+      "logs": []
+    },
+    "audio:loadDeviceSettings": {
+      "kind": "handle",
+      "ret": null,
+      "logs": []
+    },
+    "audio:loadIR": {
+      "kind": "handle",
+      "ret": "ret:loadIR:1",
+      "logs": []
+    },
+    "audio:loadNAMModel": {
+      "kind": "handle",
+      "ret": "ret:loadNAMModel:1",
+      "logs": []
+    },
+    "audio:loadPluginList": {
+      "kind": "handle",
+      "ret": "<undefined>",
+      "logs": []
+    },
+    "audio:loadPreset": {
+      "kind": "handle",
+      "ret": "ret:loadPreset:1",
+      "logs": []
+    },
+    "audio:loadVST": {
+      "kind": "handle",
+      "ret": "ret:loadVST:1",
+      "logs": []
+    },
+    "audio:moveProcessor": {
+      "kind": "handle",
+      "ret": "<undefined>",
+      "logs": []
+    },
+    "audio:openPluginEditor": {
+      "kind": "handle",
+      "threw": "((intermediate value) ?? []).find is not a function",
+      "logs": []
+    },
+    "audio:probeDeviceOptions": {
+      "kind": "handle",
+      "ret": {
+        "type": "",
+        "inputType": "",
+        "outputType": "",
+        "input": "x",
+        "output": "",
+        "inputChannels": [],
+        "outputChannels": [],
+        "sampleRates": [],
+        "bufferSizes": [],
+        "compatible": false,
+        "error": ""
+      },
+      "logs": []
+    },
+    "audio:pushRendererAudio": {
+      "kind": "on",
+      "ret": "<undefined>",
+      "logs": []
+    },
+    "audio:pushSongAudio": {
+      "kind": "on",
+      "ret": "<undefined>",
+      "logs": []
+    },
+    "audio:removeProcessor": {
+      "kind": "handle",
+      "ret": "<undefined>",
+      "logs": []
+    },
+    "audio:removeSource": {
+      "kind": "handle",
+      "ret": "ret:removeSource:1",
+      "logs": []
+    },
+    "audio:replaceIR": {
+      "kind": "handle",
+      "ret": "ret:replaceIR:3",
+      "logs": []
+    },
+    "audio:resetPeaks": {
+      "kind": "handle",
+      "ret": "<undefined>",
+      "logs": []
+    },
+    "audio:saveDeviceSettings": {
+      "kind": "handle",
+      "ret": false,
+      "logs": []
+    },
+    "audio:savePluginList": {
+      "kind": "handle",
+      "ret": "<undefined>",
+      "logs": []
+    },
+    "audio:savePreset": {
+      "kind": "handle",
+      "ret": "ret:savePreset:0",
+      "logs": []
+    },
+    "audio:scanPlugins": {
+      "kind": "handle",
+      "ret": "ret:scanPlugins:1",
+      "logs": []
+    },
+    "audio:scoreChord": {
+      "kind": "handle",
+      "ret": "ret:scoreChord:1",
+      "logs": []
+    },
+    "audio:scoreSourceChord": {
+      "kind": "handle",
+      "ret": "ret:scoreSourceChord:2",
+      "logs": []
+    },
+    "audio:seekBacking": {
+      "kind": "handle",
+      "ret": "ret:seekBacking:1",
+      "logs": []
+    },
+    "audio:sendMidiToSlot": {
+      "kind": "handle",
+      "ret": "ret:sendMidiToSlot:5",
+      "logs": []
+    },
+    "audio:setBackingSpeed": {
+      "kind": "handle",
+      "ret": false,
+      "logs": []
+    },
+    "audio:setBranch": {
+      "kind": "handle",
+      "ret": "<undefined>",
+      "logs": []
+    },
+    "audio:setBranchSrc": {
+      "kind": "handle",
+      "ret": "<undefined>",
+      "logs": []
+    },
+    "audio:setBypass": {
+      "kind": "handle",
+      "ret": "<undefined>",
+      "logs": []
+    },
+    "audio:setChart": {
+      "kind": "handle",
+      "ret": "ret:setChart:1",
+      "logs": []
+    },
+    "audio:setDevice": {
+      "kind": "handle",
+      "ret": {
+        "ok": false,
+        "error": "Native audio device call returned an unsupported result",
+        "duplex": true,
+        "sampleRate": 0,
+        "inputBlockSize": 0,
+        "outputBlockSize": 0
+      },
+      "logs": []
+    },
+    "audio:setDeviceType": {
+      "kind": "handle",
+      "ret": "ret:setDeviceType:1",
+      "logs": []
+    },
+    "audio:setGain": {
+      "kind": "handle",
+      "ret": "<undefined>",
+      "logs": []
+    },
+    "audio:setInputChannel": {
+      "kind": "handle",
+      "ret": "<undefined>",
+      "logs": []
+    },
+    "audio:setLivePitch": {
+      "kind": "handle",
+      "ret": false,
+      "logs": []
+    },
+    "audio:setMonitorKill": {
+      "kind": "handle",
+      "ret": "<undefined>",
+      "logs": []
+    },
+    "audio:setMonitorMute": {
+      "kind": "handle",
+      "ret": "<undefined>",
+      "logs": []
+    },
+    "audio:setMonitorMuteSuppressed": {
+      "kind": "handle",
+      "ret": "<undefined>",
+      "logs": []
+    },
+    "audio:setMultiBypass": {
+      "kind": "handle",
+      "ret": "ret:setMultiBypass:1",
+      "logs": []
+    },
+    "audio:setNoiseGate": {
+      "kind": "handle",
+      "ret": "<undefined>",
+      "logs": []
+    },
+    "audio:setNoteDetectionEnabled": {
+      "kind": "handle",
+      "ret": "<undefined>",
+      "logs": []
+    },
+    "audio:setOutputDeviceType": {
+      "kind": "handle",
+      "ret": "ret:setOutputDeviceType:1",
+      "logs": []
+    },
+    "audio:setPan": {
+      "kind": "handle",
+      "ret": "<undefined>",
+      "logs": []
+    },
+    "audio:setParameter": {
+      "kind": "handle",
+      "ret": "<undefined>",
+      "logs": []
+    },
+    "audio:setPostGain": {
+      "kind": "handle",
+      "ret": "<undefined>",
+      "logs": []
+    },
+    "audio:setRendererBus": {
+      "kind": "handle",
+      "ret": "<undefined>",
+      "logs": []
+    },
+    "audio:setSlotState": {
+      "kind": "handle",
+      "ret": true,
+      "logs": []
+    },
+    "audio:setSongBus": {
+      "kind": "handle",
+      "ret": "<undefined>",
+      "logs": []
+    },
+    "audio:setSourceChart": {
+      "kind": "handle",
+      "ret": "ret:setSourceChart:2",
+      "logs": []
+    },
+    "audio:setSourceInputChannel": {
+      "kind": "handle",
+      "ret": "<undefined>",
+      "logs": []
+    },
+    "audio:setSourceMonitorMute": {
+      "kind": "handle",
+      "ret": "<undefined>",
+      "logs": []
+    },
+    "audio:setSourceVerifierOffset": {
+      "kind": "handle",
+      "ret": "<undefined>",
+      "logs": []
+    },
+    "audio:setStreamBus": {
+      "kind": "handle",
+      "ret": "<undefined>",
+      "logs": []
+    },
+    "audio:setStreamBusGain": {
+      "kind": "handle",
+      "ret": "<undefined>",
+      "logs": []
+    },
+    "audio:setStreamOutputDevice": {
+      "kind": "handle",
+      "ret": "invalid arguments",
+      "logs": []
+    },
+    "audio:setTonePolish": {
+      "kind": "handle",
+      "ret": "<undefined>",
+      "logs": []
+    },
+    "audio:startAudio": {
+      "kind": "handle",
+      "ret": "<undefined>",
+      "logs": []
+    },
+    "audio:startBacking": {
+      "kind": "handle",
+      "ret": "ret:startBacking:0",
+      "logs": []
+    },
+    "audio:stopAudio": {
+      "kind": "handle",
+      "ret": "<undefined>",
+      "logs": []
+    },
+    "audio:stopBacking": {
+      "kind": "handle",
+      "ret": "ret:stopBacking:0",
+      "logs": []
+    },
+    "audio:unbindInputDevice": {
+      "kind": "handle",
+      "ret": false,
+      "logs": []
+    },
+    "debug:isEnabled": {
+      "kind": "handle",
+      "ret": false,
+      "logs": []
+    }
+  }
+}

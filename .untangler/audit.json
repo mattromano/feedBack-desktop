@@ -15,7 +15,14 @@
       "description": "CI runs no JS or C++ unit tests; the 6 engine-loading JS tests cannot run on the owner machine.",
       "status": "pending",
       "refactor_plan": "Move engine tests to tests/engine/, add test:fast/test:engine (test=fast), add one npm run test:fast step to the existing ci.yml check job. User scope 2026-11-07: no new CI jobs, no engine lane, nothing added to build.yml/release builds.",
-      "commits": []
+      "commits": [],
+      "safety_net": {
+        "type": "unit_test",
+        "location": "tests/test-inventory.test.js",
+        "status": "verified",
+        "broken_then_fixed": false,
+        "covers": "Pins all 35 node:test files (none dropped/duplicated by the move to tests/engine/) and that only the 6 engine files load the native addon."
+      }
     },
     {
       "id": "I-002",
@@ -31,7 +38,15 @@
       "description": "Parse failure returns {} and the next write drops every setting; the module also causes a require cycle.",
       "status": "pending",
       "refactor_plan": "Extract desktop-config.ts (re-export for one release); on parse failure keep a .corrupt backup and do not overwrite blindly; add a test.",
-      "commits": []
+      "commits": [],
+      "safety_net": {
+        "type": "unit_test",
+        "location": "tests/desktop-config.test.js",
+        "status": "verified",
+        "broken_then_fixed": true,
+        "covers": "Missing file -> {}, pretty atomic write (no .tmp left), shallow merge keeps unknown keys, corrupt file -> {} then next set writes, import sites in main/pane-hosts/python.",
+        "proof": "Dropping the 2-space indent in setDesktopConfig failed the test; reverted."
+      }
     },
     {
       "id": "I-003",
@@ -46,7 +61,21 @@
       "description": "IIFE2 copies of the bypass/MIDI switchers lack tonePresetNameMap and normalizeTimelineToneData; the IIFE2 preload is not serialized by _applyToneMappingsLock.",
       "status": "pending",
       "refactor_plan": "Add vm tests, export one switcher factory + chain-job lock from IIFE1, call from IIFE2; verify on the packaged build.",
-      "commits": []
+      "commits": [],
+      "safety_net": {
+        "type": "unit_test",
+        "location": "tests/tone-switcher-parity.test.js",
+        "status": "verified",
+        "broken_then_fixed": true,
+        "covers": "IIFE1 ToneSwitcher preload+switch engine calls pinned; IIFE2 bypass switcher must issue identical calls; all 3 MIDI switcher copies must send identical program changes. Records the tonePresetNameMap drift.",
+        "proof": "Flipping bypassed:false to true in the IIFE2 switcher failed the parity test; reverted.",
+        "manual_checks": [
+          "Packaged build: song with tone changes, auto-switch on -> tones switch at the right points, chain panel shows the right preset names",
+          "Packaged build: MIDI PC song -> program changes reach the VST, chain is not wiped",
+          "Packaged build: song with a whole-song tone lock -> locked preset holds through tone changes",
+          "Packaged build: start one song then quickly another -> chain ends up with the second song's presets only (preload race)"
+        ]
+      }
     },
     {
       "id": "I-004",
@@ -60,7 +89,15 @@
       "description": "Same typeof-guard/try/warn/default pattern copied ~40 times; inconsistent guarding lets native throws reject into the renderer.",
       "status": "pending",
       "refactor_plan": "callAddon(name, fallback, ...args) + PITCH_NONE, one handler group per commit; keep literal ipcMain.handle lines, defaults and warn text.",
-      "commits": []
+      "commits": [],
+      "safety_net": {
+        "type": "snapshot",
+        "location": "tests/audio-bridge-fallbacks.test.js + tests/fixtures/audio-bridge-fallbacks.snapshot.json",
+        "status": "verified",
+        "broken_then_fixed": true,
+        "covers": "All 111 audio:* IPC handlers called with addon missing / every export throwing / every export returning; return values, throws/rejections and warn/error text snapshotted.",
+        "proof": "Changing addSource's no-addon default (-1 -> -2) and the detectNotes warning text each failed the test; reverted. Snapshot shows 55 handlers that throw when the addon throws (unguarded) - guarding them is a behaviour change to decide explicitly in Phase 3."
+      }
     },
     {
       "id": "I-005",
@@ -91,7 +128,15 @@
       "description": "git clone 2>/dev/null || echo skipped; a green release can ship without a plugin.",
       "status": "pending",
       "refactor_plan": "Show stderr; fail when cloned != total unless ALLOW_MISSING_PLUGINS=1; fail loudly on the desktop plugin copy.",
-      "commits": []
+      "commits": [],
+      "safety_net": {
+        "type": "integration_test",
+        "location": "tests/build-plugin-clone.test.js",
+        "status": "verified",
+        "broken_then_fixed": true,
+        "covers": "Runs real clone_slopsmith() in bash (set -euo pipefail) with git stubbed: pins the 38 plugin dirs, the skipped/Cloned N of M report on a failed plugin clone (exit 0 today, I-006 flips it), and that a failed core clone aborts.",
+        "proof": "Deleting the scorecard entry and renaming five_fret to five-fret both failed the test; reverted. Note: the repo->dirname fallback rule is dead code (every entry has an explicit dirname), so breaking it is not detected."
+      }
     },
     {
       "id": "I-007",

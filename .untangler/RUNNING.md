@@ -37,7 +37,7 @@ in dev mode; prefer the packaged build for any check the user will hear.
 
 Only targeted, source-reading tests on this machine. NEVER the full `npm test`.
 
-Safe baseline set (24 files, 155 tests, all passing at baseline, < 1 s):
+Safe set (27 files, 162 tests incl. the Phase 2 safety nets, all passing, ~1.5 s):
 
 ```bash
 node --test $(ls tests/*.test.js | grep -v -E "chain-mutation-storm|contract-check|live-pitch|ml-note-detection|multi-source|napi-arg-fuzz|config-bootstrap|config-reset")
