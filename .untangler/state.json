@@ -76,5 +76,5 @@
   "user_ack": {
     "audit_duration": "2026-11-07: user asked to audit and set up (scope confirmed)"
   },
-  "next_action": "Phase 2 gate passed 11/11; user to acknowledge the safety nets (incl. I-003 manual packaged-build checklist), then advance 2 and start Phase 3 with I-001"
+  "next_action": "Phase 3: I-001 done (f155640, 1d2d250). Next: I-002 extract desktop-config.ts from soundfont-manager.ts, keep a .corrupt backup on parse errors"
 }
