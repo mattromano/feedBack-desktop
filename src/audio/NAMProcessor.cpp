@@ -73,7 +73,16 @@ void NAMProcessor::releaseResources()
 void NAMProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce::MidiBuffer&)
 {
 #if SLOPSMITH_NAM_SUPPORT
-    const juce::ScopedLock sl(modelLock);
+    // Never block the audio thread on a model swap: a control thread holding
+    // modelLock (loadModel's swap, prepareToPlay's Reset + prewarm) would stall
+    // the whole device callback — guitar, song bus and all. Skip the block
+    // (silence) instead; a swap only ever holds the lock briefly.
+    const juce::ScopedTryLock sl(modelLock);
+    if (!sl.isLocked())
+    {
+        buffer.clear();
+        return;
+    }
     if (!model)
         return;
 
@@ -150,8 +159,15 @@ void NAMProcessor::setStateInformation(const void* data, int sizeInBytes)
 
     if (auto* obj = parsed.getDynamicObject())
     {
+        // A preset restores each NAM slot by path FIRST (LoadPreset), then
+        // applies this state — whose modelPath is normally that same file.
+        // Reloading it re-parsed and re-prewarmed the model a second time while
+        // the slot was already live in the chain, and the audio callback froze
+        // for ~0.75 s on every tone switch (measured on ASIO: the renderer bus
+        // backed up to ~37k frames, then dropped). Only load a DIFFERENT model.
         auto path = obj->getProperty("modelPath").toString();
-        if (path.isNotEmpty())
+        if (path.isNotEmpty()
+            && ! (modelLoaded.load() && juce::File(path) == juce::File(currentModelPath)))
             loadModel(juce::File(path));
 
         if (obj->hasProperty("inputLevel"))

@@ -377,6 +377,7 @@ void NoteVerifier::run()
                 st.snr = st.bestSnr;
 
                 double when = cn.t;
+                bool timed = false;
                 if (! cn.ho && ! cn.po)
                 {
                     int best = -1;
@@ -391,6 +392,7 @@ void NoteVerifier::run()
                     {
                         onsetLog[(size_t) best].claimed = true;
                         when = onsetLog[(size_t) best].songTime;
+                        timed = true;
                     }
                 }
                 st.detectedSongTime = when;
@@ -399,6 +401,7 @@ void NoteVerifier::run()
                 v.id = cn.id;
                 v.detected = true;
                 v.detectedSongTime = when;
+                v.timed = timed;
                 v.centsError = st.bestCents;
                 v.snr = st.bestSnr;
                 pending.push_back(v);
