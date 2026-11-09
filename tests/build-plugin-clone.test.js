@@ -12,7 +12,7 @@ const os = require('node:os');
 const path = require('node:path');
 const { spawnSync } = require('node:child_process');
 
-const SRC = fs.readFileSync(path.join(__dirname, '..', 'scripts', 'build-common.sh'), 'utf8');
+const SRC = fs.readFileSync(path.join(__dirname, '..', 'scripts', 'build-common.sh'), 'utf8').replace(/\r\n/g, '\n');
 const FN = SRC.match(/^clone_slopsmith\(\) \{[\s\S]*?^\}$/m)[0];
 
 const EXPECTED_DIRS = [
