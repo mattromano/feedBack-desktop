@@ -12,7 +12,7 @@ const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
 
-const ADDON = path.join(__dirname, '..', 'build', 'Release', 'slopsmith_audio.node');
+const ADDON = path.join(__dirname, '..', '..', 'build', 'Release', 'slopsmith_audio.node');
 const HAVE_ADDON = fs.existsSync(ADDON);
 
 function writeImpulseWav(file) {

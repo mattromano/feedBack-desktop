@@ -52,8 +52,18 @@ test('no node:test file was added, dropped or duplicated', () => {
     assert.deepEqual(names, [...ALL].sort());
 });
 
+const loads = (src) => /'Release'/.test(src) || /require\(['"](\.\.?)\/contracts\/extract(\.js)?['"]\)/.test(src);
+
 test('only the engine set loads the native addon', () => {
-    const loads = (src) => /'Release'/.test(src) || /require\(['"]\.\/contracts\/extract(\.js)?['"]\)/.test(src);
     const actual = found.filter((t) => t.name !== 'test-inventory' && loads(fs.readFileSync(t.file, 'utf8'))).map((t) => t.name).sort();
     assert.deepEqual(actual, [...ENGINE].sort());
+});
+
+test('engine tests live in tests/engine/, everything else is in the fast lane', () => {
+    // npm run test:fast runs tests/*.test.js; npm run test:engine runs tests/engine/*.test.js.
+    const engineDir = path.join(TESTS, 'engine');
+    const inEngine = found.filter((t) => path.dirname(t.file) === engineDir).map((t) => t.name).sort();
+    const inFast = found.filter((t) => path.dirname(t.file) === TESTS).map((t) => t.name);
+    assert.deepEqual(inEngine, [...ENGINE].sort());
+    assert.equal(inEngine.length + inFast.length, ALL.length, 'a test file sits outside both lanes');
 });

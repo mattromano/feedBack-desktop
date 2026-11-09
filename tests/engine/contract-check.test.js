@@ -10,10 +10,10 @@ const assert = require('node:assert');
 const fs = require('fs');
 const path = require('path');
 
-const { extractAddonExports, extractIpcChannels, extractPreloadApi } = require('./contracts/extract.js');
+const { extractAddonExports, extractIpcChannels, extractPreloadApi } = require('../contracts/extract.js');
 
 function loadSnapshot(name) {
-    return JSON.parse(fs.readFileSync(path.join(__dirname, 'contracts', name), 'utf8'));
+    return JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'contracts', name), 'utf8'));
 }
 
 test('addon export table matches snapshot', (t) => {

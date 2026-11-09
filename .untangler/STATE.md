@@ -1,7 +1,7 @@
 # Codebase Untangler - State
 
 **Started**: 2026-11-07T20:48:45.568531+00:00
-**Current phase**: 2 (Safety Net)
+**Current phase**: 3 (Refactor)
 **Branch**: refactor/untangle-2026-11-07
 **Stack**: electron, typescript, vanilla-js-renderer, cpp-juce-node-addon, vst-sandbox, python-bundled-core
 
@@ -9,8 +9,8 @@
 
 - [x] Phase 0: Triage (done)
 - [x] Phase 1: Audit (done)
-- [~] Phase 2: Safety Net (in_progress)
-- [ ] Phase 3: Refactor (pending)
+- [x] Phase 2: Safety Net (done)
+- [~] Phase 3: Refactor (in_progress)
 - [ ] Phase 4: Hardening (pending)
 - [ ] Phase 5: Handover (pending)
 

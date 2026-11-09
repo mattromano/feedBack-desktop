@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "started_at": "2026-11-07T20:48:45.568531+00:00",
-  "current_phase": 2,
+  "current_phase": 3,
   "phases": {
     "0": {
       "name": "Triage",
@@ -19,14 +19,16 @@
     },
     "2": {
       "name": "Safety Net",
-      "status": "in_progress",
+      "status": "done",
       "gates": {},
-      "started_at": "2026-11-09T14:33:34.238429+00:00"
+      "started_at": "2026-11-09T14:33:34.238429+00:00",
+      "completed_at": "2026-11-09T14:47:39.483445+00:00"
     },
     "3": {
       "name": "Refactor",
-      "status": "pending",
-      "gates": {}
+      "status": "in_progress",
+      "gates": {},
+      "started_at": "2026-11-09T14:47:39.483445+00:00"
     },
     "4": {
       "name": "Hardening",

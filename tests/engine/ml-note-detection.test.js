@@ -5,7 +5,7 @@
 // the ML path, that getPitchDetection()/scoreChord() keep their shapes, and
 // that a bad model path fails soft to the YIN fallback (Constitution VII).
 //
-// Run:  node --test tests/ml-note-detection.test.js
+// Run:  node --test tests/engine/ml-note-detection.test.js
 // Skips cleanly when the addon hasn't been built yet (npm run build:audio).
 //
 // WAV→MIDI detection accuracy is covered separately by the Phase 0 spike
@@ -16,8 +16,8 @@ const assert = require('node:assert/strict');
 const path = require('node:path');
 const fs = require('node:fs');
 
-const ADDON = path.join(__dirname, '..', 'build', 'Release', 'slopsmith_audio.node');
-const MODEL = path.join(__dirname, '..', 'resources', 'models', 'basic_pitch.onnx');
+const ADDON = path.join(__dirname, '..', '..', 'build', 'Release', 'slopsmith_audio.node');
+const MODEL = path.join(__dirname, '..', '..', 'resources', 'models', 'basic_pitch.onnx');
 
 let audio = null;
 try {
