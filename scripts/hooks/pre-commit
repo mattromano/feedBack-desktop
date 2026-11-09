@@ -1,0 +1,20 @@
+#!/bin/sh
+# Pre-commit guard (installed by `npm run hooks:install`). Runs the architecture
+# boundary rules and the untangler safety nets: source-reading tests only, no
+# native engine, a couple of seconds. Skip once with `git commit --no-verify`.
+cd "$(git rev-parse --show-toplevel)" || exit 1
+log="${TMPDIR:-/tmp}/feedback-precommit.log"
+node --test \
+  tests/boundaries.test.js \
+  tests/test-inventory.test.js \
+  tests/renderer-iife-scope.test.js \
+  tests/tone-switcher-parity.test.js \
+  tests/audio-bridge-fallbacks.test.js \
+  tests/desktop-config.test.js \
+  tests/build-plugin-clone.test.js > "$log" 2>&1
+status=$?
+if [ $status -ne 0 ]; then
+  grep -E "^not ok|AssertionError|Error:" "$log" | head -20
+  echo "pre-commit: guard tests failed (full log: $log)" >&2
+fi
+exit $status

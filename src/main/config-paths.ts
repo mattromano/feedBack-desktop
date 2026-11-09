@@ -94,7 +94,7 @@ export function enumerateConfigPaths(env: ConfigPathEnv): ConfigPathCategories {
     const c = env.configDir;
 
     const appSettingsAndCaches = [
-        // Desktop prefs (soundfont quality, LAN access) — soundfont-manager.ts
+        // Desktop prefs (soundfont quality, LAN access, windows) — desktop-config.ts
         path.join(u, 'slopsmith-desktop.json'),
         // Audio device settings — audio-bridge.ts
         path.join(u, 'slopsmith-audio-settings.json'),

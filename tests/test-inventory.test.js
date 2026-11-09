@@ -18,7 +18,7 @@ const ENGINE = [
 
 // Every node:test file at the untangler baseline plus the Phase 2 safety nets.
 const ALL = [
-    'audio-bridge-fallbacks', 'audio-chain-persistence', 'audio-effects-executor',
+    'audio-bridge-fallbacks', 'audio-chain-persistence', 'audio-effects-executor', 'boundaries',
     'build-plugin-clone', 'chain-mutation-storm', 'config-bootstrap',
     'config-migrations', 'config-paths', 'config-reset', 'contract-check',
     'desktop-config', 'device-setup-lifecycle', 'engine-no-default-mic',
