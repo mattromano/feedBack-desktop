@@ -93,9 +93,11 @@
         "src/main/audio-bridge.ts:602-612,728,1010,1031,1035,1040-1056,1212,1240,1273-1298"
       ],
       "description": "Same typeof-guard/try/warn/default pattern copied ~40 times; inconsistent guarding lets native throws reject into the renderer.",
-      "status": "pending",
+      "status": "done",
       "refactor_plan": "callAddon(name, fallback, ...args) + PITCH_NONE, one handler group per commit; keep literal ipcMain.handle lines, defaults and warn text.",
-      "commits": [],
+      "commits": [
+        "caab1da"
+      ],
       "safety_net": {
         "type": "snapshot",
         "location": "tests/audio-bridge-fallbacks.test.js + tests/fixtures/audio-bridge-fallbacks.snapshot.json",
@@ -103,7 +105,8 @@
         "broken_then_fixed": true,
         "covers": "All 111 audio:* IPC handlers called with addon missing / every export throwing / every export returning; return values, throws/rejections and warn/error text snapshotted.",
         "proof": "Changing addSource's no-addon default (-1 -> -2) and the detectNotes warning text each failed the test; reverted. Snapshot shows 55 handlers that throw when the addon throws (unguarded) - guarding them is a behaviour change to decide explicitly in Phase 3."
-      }
+      },
+      "outcome": "Only 7 handlers were exact copies of guard/try/warn/fallback; those now use callAddon(). The audit's ~40 figure counted sites with argument validation, silent catches or no try at all; converting those would change behaviour (see deferred.md)."
     },
     {
       "id": "I-005",
