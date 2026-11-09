@@ -1,7 +1,6 @@
-// Untangler safety net for I-002 (extract desktop-config.ts out of
+// Untangler safety net for I-002 (desktop-config.ts, extracted from
 // soundfont-manager.ts). Pins how <userData>/slopsmith-desktop.json is read and
-// written, through the module every caller imports today. Electron and
-// python.ts are stubbed; nothing is spawned.
+// written. Electron is stubbed; nothing is spawned.
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
@@ -19,7 +18,7 @@ function load() {
         },
         './python': { restartPython: async () => {} },
     };
-    const mod = loadTsStubbed('src/main/soundfont-manager.ts', stubs);
+    const mod = loadTsStubbed('src/main/desktop-config.ts', stubs);
     const file = path.join(dir, 'slopsmith-desktop.json');
     return { mod, dir, file, done: () => fs.rmSync(dir, { recursive: true, force: true }) };
 }

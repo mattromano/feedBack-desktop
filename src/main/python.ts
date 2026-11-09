@@ -9,7 +9,8 @@ import { app } from 'electron';
 import * as http from 'http';
 import * as net from 'net';
 import * as os from 'os';
-import { getActiveSoundfontPath, getDesktopConfig } from './soundfont-manager';
+import { getActiveSoundfontPath } from './soundfont-manager';
+import { getDesktopConfig } from './desktop-config';
 import { isDebugEnabled } from './debug-log';
 import {
     applyLibraryPathToPythonEnvironment,
