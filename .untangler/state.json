@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "started_at": "2026-11-07T20:48:45.568531+00:00",
-  "current_phase": 1,
+  "current_phase": 2,
   "phases": {
     "0": {
       "name": "Triage",
@@ -12,14 +12,16 @@
     },
     "1": {
       "name": "Audit",
-      "status": "in_progress",
+      "status": "done",
       "gates": {},
-      "started_at": "2026-11-07T20:50:20.953556+00:00"
+      "started_at": "2026-11-07T20:50:20.953556+00:00",
+      "completed_at": "2026-11-09T14:33:34.237429+00:00"
     },
     "2": {
       "name": "Safety Net",
-      "status": "pending",
-      "gates": {}
+      "status": "in_progress",
+      "gates": {},
+      "started_at": "2026-11-09T14:33:34.238429+00:00"
     },
     "3": {
       "name": "Refactor",
@@ -60,7 +62,7 @@
     "vst-sandbox",
     "python-bundled-core"
   ],
-  "top_5_signed_off_at": null,
+  "top_5_signed_off_at": "2026-11-09T14:33:29Z",
   "overrides": [],
   "stack_reference_note": "No matching stack file; read node-express.md as the closest (Node process) and applied its general patterns",
   "last_test_run": {
@@ -72,5 +74,5 @@
   "user_ack": {
     "audit_duration": "2026-11-07: user asked to audit and set up (scope confirmed)"
   },
-  "next_action": "Phase 1: user to sign off on the Top 5 (I-001, I-002, I-006, I-004, I-003) or swap items; then record top_5_signed_off_at and run check_gate.py 1"
+  "next_action": "Phase 2: plan + build a verified safety net for each Top 5 item (I-001, I-002, I-006, I-004, I-003), source-reading tests only; prove one fails when broken"
 }
