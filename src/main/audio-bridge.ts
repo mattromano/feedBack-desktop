@@ -14,6 +14,19 @@ type AudioModule = Record<string, (...args: any[]) => any>;
 
 let audio: AudioModule | null = null;
 
+// Guarded call into the native addon: the fallback when the addon is missing
+// or lacks the export, otherwise the call, with a throw logged as
+// "[audio] <name> failed: <message>" and answered with the fallback. Used by
+// handlers whose whole body is exactly that (untangler I-004).
+function callAddon<T>(name: string, fallback: T, ...args: unknown[]): T {
+    if (!audio || typeof audio[name] !== 'function') return fallback;
+    try { return audio[name](...args); }
+    catch (e: unknown) {
+        console.warn(`[audio] ${name} failed: ${e instanceof Error ? e.message : String(e)}`);
+        return fallback;
+    }
+}
+
 type AudioDeviceSettings = {
     type: string;          // legacy alias = inputType when only type was stored
     inputType?: string;
@@ -505,12 +518,7 @@ export function initAudioBridge(): void {
     });
 
     ipcMain.handle('audio:setOutputDeviceType', (_event, typeName: string) => {
-        if (!audio || typeof audio.setOutputDeviceType !== 'function') return false;
-        try { return audio.setOutputDeviceType(typeName); }
-        catch (e: any) {
-            console.warn(`[audio] setOutputDeviceType failed: ${e?.message ?? e}`);
-            return false;
-        }
+        return callAddon('setOutputDeviceType', false, typeName);
     });
 
     ipcMain.handle('audio:setDevice', (_event, ...args: any[]) => {
@@ -571,12 +579,7 @@ export function initAudioBridge(): void {
     });
 
     ipcMain.handle('audio:getDeviceMetrics', () => {
-        if (!audio || typeof audio.getDeviceMetrics !== 'function') return null;
-        try { return audio.getDeviceMetrics(); }
-        catch (e: any) {
-            console.warn(`[audio] getDeviceMetrics failed: ${e?.message ?? e}`);
-            return null;
-        }
+        return callAddon('getDeviceMetrics', null);
     });
 
     ipcMain.handle('audio:loadDeviceSettings', () => readAudioSettings());
@@ -834,13 +837,7 @@ export function initAudioBridge(): void {
         // above does — a downlevel addon (pre-ChordScorer build) should
         // return null so the renderer can fall back to skipping chord
         // scoring instead of throwing on every call.
-        if (!audio || typeof audio.scoreChord !== 'function') return null;
-        try {
-            return audio.scoreChord(ctx);
-        } catch (e: unknown) {
-            console.warn(`[audio] scoreChord failed: ${e instanceof Error ? e.message : String(e)}`);
-            return null;
-        }
+        return callAddon('scoreChord', null, ctx);
     });
 
     // Push the song's note chart into the engine for continuous, background
@@ -850,13 +847,7 @@ export function initAudioBridge(): void {
     // Returns null on a downlevel addon (pre-NoteVerifier) so the renderer
     // feature-detects and keeps the old matchNotes path.
     ipcMain.handle('audio:setChart', (_event, chart: unknown) => {
-        if (!audio || typeof audio.setChart !== 'function') return null;
-        try {
-            return audio.setChart(chart);
-        } catch (e: unknown) {
-            console.warn(`[audio] setChart failed: ${e instanceof Error ? e.message : String(e)}`);
-            return null;
-        }
+        return callAddon('setChart', null, chart);
     });
 
     // Drain the verdicts the NoteVerifier thread has finalized since the last
@@ -915,13 +906,7 @@ export function initAudioBridge(): void {
     // listInputDevices() -> [{ typeName, name }] | null. Capture devices available
     // to bind as additional engine inputs.
     ipcMain.handle('audio:listInputDevices', () => {
-        if (!audio || typeof audio.listInputDevices !== 'function') return null;
-        try {
-            return audio.listInputDevices();
-        } catch (e: unknown) {
-            console.warn(`[audio] listInputDevices failed: ${e instanceof Error ? e.message : String(e)}`);
-            return null;
-        }
+        return callAddon('listInputDevices', null);
     });
 
     // bindInputDevice(deviceKey, deviceName) -> "" on success or an error string
@@ -1067,13 +1052,7 @@ export function initAudioBridge(): void {
     });
 
     ipcMain.handle('audio:listSources', () => {
-        if (!audio || typeof audio.listSources !== 'function') return null;
-        try {
-            return audio.listSources();
-        } catch (e: unknown) {
-            console.warn(`[audio] listSources failed: ${e instanceof Error ? e.message : String(e)}`);
-            return null;
-        }
+        return callAddon('listSources', null);
     });
 
     ipcMain.handle('audio:setSourceInputChannel', (_event, id: unknown, channel: unknown) => {
@@ -1196,13 +1175,7 @@ export function initAudioBridge(): void {
     // support, or no model loaded) so the renderer feature-detects and falls
     // back to the getPitchDetection / scoreChord path.
     ipcMain.handle('audio:detectNotes', () => {
-        if (!audio || typeof audio.detectNotes !== 'function') return null;
-        try {
-            return audio.detectNotes();
-        } catch (e: unknown) {
-            console.warn(`[audio] detectNotes failed: ${e instanceof Error ? e.message : String(e)}`);
-            return null;
-        }
+        return callAddon('detectNotes', null);
     });
 
     // ── VST Scanning ───────────────────────────────────────────────────────
