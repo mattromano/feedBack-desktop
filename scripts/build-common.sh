@@ -231,6 +231,18 @@ clone_slopsmith() {
 
 	export SLOPSMITH_DIR="$clone_dir"
 	echo "Cloned ${cloned} of ${total} plugins"
+	# A missing plugin used to ship silently (the app just lacked it). Fail
+	# instead; ALLOW_MISSING_PLUGINS=1 keeps the old lenient behaviour for
+	# local/fork builds that cannot reach every plugin repo.
+	if (( cloned < total )); then
+		if [[ "${ALLOW_MISSING_PLUGINS:-0}" == "1" ]]; then
+			echo "WARNING: $((total - cloned)) plugin(s) missing; continuing (ALLOW_MISSING_PLUGINS=1)" >&2
+		else
+			echo "ERROR: $((total - cloned)) plugin(s) failed to clone (see 'skipped' above). Set ALLOW_MISSING_PLUGINS=1 to build without them." >&2
+			cd - >/dev/null
+			return 1
+		fi
+	fi
 	cd - >/dev/null
 }
 

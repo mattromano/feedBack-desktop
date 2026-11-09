@@ -71,6 +71,7 @@ Unified build system for Slopsmith Desktop supporting Linux (via Docker), macOS,
    - Validates environment (Node.js, Python, .NET)
    - Runs npm install, builds C++ engine, bundles resources
    - Calls platform-specific functions for: dependency installation, Python bundling, binary bundling
+   - Clones the core and every bundled plugin; if any plugin fails to clone the build stops. Set `ALLOW_MISSING_PLUGINS=1` to build without the missing ones (local or fork builds that cannot reach every plugin repo)
 
 ## Platform-Specific Scripts
 

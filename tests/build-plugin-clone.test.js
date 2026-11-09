@@ -3,8 +3,8 @@
 // Runs the real clone_slopsmith() from scripts/build-common.sh in bash under
 // `set -euo pipefail` (as the build does), with `git` replaced by a shell
 // function that only creates directories. No network, nothing outside a temp
-// dir. Pins the plugin list and the repo -> directory-name mapping, and the
-// current (lenient) failure behaviour that I-006 is meant to change.
+// dir. Pins the plugin list and the repo -> directory-name mapping, and that a
+// failed plugin clone fails the build unless ALLOW_MISSING_PLUGINS=1.
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
@@ -27,7 +27,7 @@ const EXPECTED_DIRS = [
     'tutorials', 'virtuoso',
 ];
 
-function run(failPattern = '') {
+function run(failPattern = '', extraEnv = {}) {
     const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'untangler-i006-'));
     const harness = `
 set -euo pipefail
@@ -42,7 +42,7 @@ clone_slopsmith "$TMPC/clone"
 echo "DIRS:$(cd "$TMPC/clone/plugins" && ls -1 | tr '\\n' ' ')"
 `;
     const r = spawnSync('bash', ['-c', harness], {
-        env: { ...process.env, FAIL: failPattern, TMPC: tmp.replace(/\\/g, '/'), GH_CLONE_TOKEN: '' },
+        env: { ...process.env, FAIL: failPattern, TMPC: tmp.replace(/\\/g, '/'), GH_CLONE_TOKEN: '', ALLOW_MISSING_PLUGINS: '', ...extraEnv },
         encoding: 'utf8',
         timeout: 30000,
     });
@@ -62,15 +62,21 @@ test('all clones succeed: every plugin lands in its expected directory', () => {
     for (const d of r.dirs) assert.match(d, /^[a-z0-9_]+$/, `plugin dir "${d}" is not a valid module name`);
 });
 
-test('a failed plugin clone is reported (current behaviour: build continues)', () => {
+test('a failed plugin clone is reported and fails the build', () => {
     const r = run('feedBack-plugin-scorecard');
     assert.match(r.out, /skipped mattromano\/feedBack-plugin-scorecard/);
-    assert.match(r.out, /Cloned (\d+) of (\d+) plugins/);
     const [, got, total] = r.out.match(/Cloned (\d+) of (\d+) plugins/);
     assert.equal(Number(got), Number(total) - 1);
+    assert.match(r.err, /1 plugin\(s\) failed to clone/);
+    assert.notEqual(r.status, 0);
+});
+
+test('ALLOW_MISSING_PLUGINS=1 keeps building without the missing plugin', () => {
+    const r = run('feedBack-plugin-scorecard', { ALLOW_MISSING_PLUGINS: '1' });
+    assert.equal(r.status, 0, r.err);
+    assert.match(r.err, /1 plugin\(s\) missing; continuing/);
+    assert.equal(r.dirs.length, EXPECTED_DIRS.length - 1);
     assert.ok(!r.dirs.includes('scorecard'));
-    // I-006 flips this to a non-zero exit unless ALLOW_MISSING_PLUGINS=1.
-    assert.equal(r.status, 0);
 });
 
 test('a failed core clone stops the build', () => {
