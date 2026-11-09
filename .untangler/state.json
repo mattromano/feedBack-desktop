@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "started_at": "2026-11-07T20:48:45.568531+00:00",
-  "current_phase": 4,
+  "current_phase": 5,
   "phases": {
     "0": {
       "name": "Triage",
@@ -33,14 +33,16 @@
     },
     "4": {
       "name": "Hardening",
-      "status": "in_progress",
+      "status": "done",
       "gates": {},
-      "started_at": "2026-11-09T16:08:29.044296+00:00"
+      "started_at": "2026-11-09T16:08:29.044296+00:00",
+      "completed_at": "2026-11-09T16:14:35.232063+00:00"
     },
     "5": {
       "name": "Handover",
-      "status": "pending",
-      "gates": {}
+      "status": "in_progress",
+      "gates": {},
+      "started_at": "2026-11-09T16:14:35.232063+00:00"
     }
   },
   "baseline": {
@@ -67,7 +69,20 @@
     "python-bundled-core"
   ],
   "top_5_signed_off_at": "2026-11-09T14:33:29Z",
-  "overrides": [],
+  "overrides": [
+    {
+      "timestamp": "2026-11-09T16:14:35.080914+00:00",
+      "phase": "4",
+      "gate": "Lint config present",
+      "reason": "User override 2026-11-09: boundary rules enforced by tests/boundaries.test.js in the CI fast lane instead of ESLint (no new deps / CI runtime)"
+    },
+    {
+      "timestamp": "2026-11-09T16:14:35.160636+00:00",
+      "phase": "4",
+      "gate": "Pre-commit hooks configured",
+      "reason": "User override 2026-11-09: hook script committed (scripts/hooks/pre-commit); installing into .git/hooks was blocked by the permission check - user to run npm run hooks:install"
+    }
+  ],
   "stack_reference_note": "No matching stack file; read node-express.md as the closest (Node process) and applied its general patterns",
   "last_test_run": {
     "timestamp": "2026-11-07T20:50:11.101125+00:00",
@@ -78,5 +93,5 @@
   "user_ack": {
     "audit_duration": "2026-11-07: user asked to audit and set up (scope confirmed)"
   },
-  "next_action": "Phase 4: gate 2/4. User runs npm run hooks:install (clears the hook check). Lint check: boundaries are enforced by tests/boundaries.test.js instead of ESLint (no new deps); needs the override phrase or an ESLint setup. Then Phase 5 handover"
+  "next_action": "Phase 5: handover written and tagged refactor-complete-2026-11-09 (local). User to read HANDOVER.md and confirm completion; branch left unmerged/unpushed for the user"
 }
