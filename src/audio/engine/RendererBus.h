@@ -69,7 +69,13 @@ public:
     // `deviceRate` on the producer thread (fractional position + previous
     // frame carried across calls). Returns false when the bus is disabled or
     // the rates are unusable. Drop-oldest on overflow, counted consumer-side.
-    bool push(const float* interleavedLR, int frames, double sourceRate, double deviceRate)
+    //
+    // `sourceStartFrame` (optional, >= 0) is the producer clock's frame index
+    // of this chunk's first frame (an AudioWorklet's currentFrame). It anchors
+    // the heard clock: the consumer can then say which source frame is
+    // reaching the speakers (heardClock()).
+    bool push(const float* interleavedLR, int frames, double sourceRate, double deviceRate,
+              double sourceStartFrame = -1.0)
     {
         if (!busEnabled.load(std::memory_order_acquire)) return false;
         if (interleavedLR == nullptr || frames <= 0) return false;
@@ -81,6 +87,8 @@ public:
         if (!std::isfinite(sourceRate) || sourceRate <= 0.0) sourceRate = deviceRate;
 
         uint64_t w = ring.beginWrite();
+        const uint64_t chunkRingStart = w;
+        const double chunkSrcPos = srcPos;   // source position of ring frame w, in chunk frames
 
         // Linear resample source→device rate on this (IPC) thread. `pos` is
         // the fractional read position into the incoming chunk; index -1
@@ -112,6 +120,11 @@ public:
 
         // Publish. Overflow (producer lapping the consumer) is handled
         // consumer-side with drop-oldest — only the consumer moves readIndex.
+        // Anchor BEFORE publishing the frames, so the consumer never reads
+        // a ring frame whose anchor it can't see yet. A source jump (a new
+        // context, a dropped worklet message) only affects frames past it.
+        if (written > 0 && std::isfinite(sourceStartFrame) && sourceStartFrame >= 0.0)
+            pushAnchor({ chunkRingStart, sourceStartFrame + chunkSrcPos, step });
         ring.publish(w);
         pushedFrames.fetch_add(written, std::memory_order_relaxed);
         return true;
@@ -120,7 +133,11 @@ public:
     // Drain one block into dl/dr (bus gain applied). Returns numSamples on
     // success, 0 when gated (disabled, priming, underflow). Single consumer —
     // call exactly once per output block.
-    int pull(float* dl, float* dr, int numSamples)
+    //
+    // `callbackStartMs` (optional, >= 0): wall time the output callback that
+    // will play this block started (any monotonic ms clock). With it, a
+    // successful pull publishes the heard-clock stamp (see heardClock()).
+    int pull(float* dl, float* dr, int numSamples, double callbackStartMs = -1.0)
     {
         // Consume a pending flush FIRST — even while disabled — so the tail
         // buffered before a disable is dropped by the ring's one legitimate
@@ -136,7 +153,7 @@ public:
             if (target > ring.readIndex.load(std::memory_order_relaxed))
                 ring.commitRead(target);
         }
-        if (!busEnabled.load(std::memory_order_acquire)) return 0;
+        if (!busEnabled.load(std::memory_order_acquire)) { invalidateHeard(); return 0; }
         const uint64_t w = ring.writeIndex.load(std::memory_order_acquire);
         uint64_t r = ring.readIndex.load(std::memory_order_relaxed);
         if (w - r > (uint64_t) kFrames)
@@ -167,6 +184,7 @@ public:
             if (avail < (uint64_t) kPrimeFrames)
             {
                 ring.commitRead(r);
+                invalidateHeard();
                 return 0;
             }
             primed = true;
@@ -178,6 +196,7 @@ public:
             primed = false;
             underflowCount.fetch_add(1, std::memory_order_relaxed);
             ring.commitRead(w);
+            invalidateHeard();
             return 0;
         }
 
@@ -191,7 +210,33 @@ public:
         }
         ring.commitRead(r + (uint64_t) numSamples);
         consumedFrames.fetch_add((uint64_t) numSamples, std::memory_order_relaxed);
+        if (callbackStartMs >= 0.0) publishHeard(r, callbackStartMs);
         return numSamples;
+    }
+
+    // Heard clock: which producer (source) frame starts the block the latest
+    // output callback is playing, and when that callback started. A player
+    // adds the device's output latency: that frame reaches the speakers at
+    // wallMs + outputLatency, and later frames follow at `srcPerDeviceFrame`
+    // source frames per device frame. valid = false while the bus is gated
+    // (disabled / priming / underflow) or before any anchored push.
+    struct HeardClock { bool valid = false; double sourceFrame = 0.0; double wallMs = 0.0; double srcPerDeviceFrame = 1.0; };
+    HeardClock heardClock() const
+    {
+        HeardClock h;
+        for (int attempt = 0; attempt < 8; ++attempt)
+        {
+            const uint32_t s1 = heardSeq.load(std::memory_order_acquire);
+            if (s1 & 1u) continue;
+            h.valid = heardValid.load(std::memory_order_relaxed);
+            h.sourceFrame = heardSrc.load(std::memory_order_relaxed);
+            h.wallMs = heardMs.load(std::memory_order_relaxed);
+            h.srcPerDeviceFrame = heardStep.load(std::memory_order_relaxed);
+            std::atomic_thread_fence(std::memory_order_acquire);
+            if (heardSeq.load(std::memory_order_relaxed) == s1) return h;
+        }
+        h.valid = false;
+        return h;
     }
 
     struct Metrics
@@ -217,6 +262,66 @@ public:
     }
 
 private:
+    // -- Heard-clock anchors (producer -> consumer SPSC queue) --
+    // One per anchored push: ring index of its first resampled frame, the
+    // source frame that ring frame holds, and the source step per ring frame.
+    struct Anchor { uint64_t ring = 0; double src = 0.0; double step = 1.0; };
+    static constexpr int kAnchors = 1024;           // ~10 s of 10 ms pushes
+    Anchor anchors[kAnchors];
+    std::atomic<uint64_t> anchorWrite{0};           // producer only
+    std::atomic<uint64_t> anchorRead{0};            // consumer only
+    Anchor current{};                               // consumer only
+    bool haveCurrent = false;                       // consumer only
+
+    void pushAnchor(const Anchor& a)
+    {
+        const uint64_t aw = anchorWrite.load(std::memory_order_relaxed);
+        // Full queue (consumer stalled ~10 s): writing would overwrite an
+        // anchor the consumer may still read, so drop this one; its frames
+        // stay mapped by the previous anchor (exact unless the source jumped).
+        if (aw - anchorRead.load(std::memory_order_acquire) >= (uint64_t) kAnchors) return;
+        anchors[aw % kAnchors] = a;
+        anchorWrite.store(aw + 1, std::memory_order_release);
+    }
+
+    void publishHeard(uint64_t readIndex, double callbackStartMs)
+    {
+        // Advance to the newest anchor at or before readIndex.
+        const uint64_t aw = anchorWrite.load(std::memory_order_acquire);
+        uint64_t ar = anchorRead.load(std::memory_order_relaxed);
+        while (ar < aw && anchors[ar % kAnchors].ring <= readIndex)
+        {
+            current = anchors[ar % kAnchors];
+            haveCurrent = true;
+            ++ar;
+        }
+        anchorRead.store(ar, std::memory_order_release);
+        if (!haveCurrent) { invalidateHeard(); return; }
+        const double src = current.src + (double) (readIndex - current.ring) * current.step;
+        const uint32_t seq = heardSeq.load(std::memory_order_relaxed);
+        heardSeq.store(seq + 1, std::memory_order_relaxed);
+        std::atomic_thread_fence(std::memory_order_release);
+        heardSrc.store(src, std::memory_order_relaxed);
+        heardMs.store(callbackStartMs, std::memory_order_relaxed);
+        heardStep.store(current.step, std::memory_order_relaxed);
+        heardValid.store(true, std::memory_order_relaxed);
+        heardSeq.store(seq + 2, std::memory_order_release);
+    }
+    void invalidateHeard()
+    {
+        if (!heardValid.load(std::memory_order_relaxed)) return;
+        const uint32_t seq = heardSeq.load(std::memory_order_relaxed);
+        heardSeq.store(seq + 1, std::memory_order_relaxed);
+        std::atomic_thread_fence(std::memory_order_release);
+        heardValid.store(false, std::memory_order_relaxed);
+        heardSeq.store(seq + 2, std::memory_order_release);
+    }
+    std::atomic<uint32_t> heardSeq{0};
+    std::atomic<bool>     heardValid{false};
+    std::atomic<double>   heardSrc{0.0};
+    std::atomic<double>   heardMs{0.0};
+    std::atomic<double>   heardStep{1.0};
+
     PackedStereoRing<kFrames> ring;
     std::atomic<uint64_t> pushedFrames{0};
     std::atomic<uint64_t> consumedFrames{0};

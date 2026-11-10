@@ -468,6 +468,76 @@ Napi::Value GetRendererBusMetrics(const Napi::CallbackInfo& info)
     return obj;
 }
 
+// setSongBus(enabled:boolean, gain:number) -- the song-only bus (see
+// AudioEngine::setSongBus).
+Napi::Value SetSongBus(const Napi::CallbackInfo& info)
+{
+    auto liveEngine = snapshotEngine();
+    if (liveEngine && info.Length() >= 2 && info[0].IsBoolean() && info[1].IsNumber())
+        liveEngine->setSongBus(info[0].As<Napi::Boolean>().Value(),
+                               (float) info[1].As<Napi::Number>().DoubleValue());
+    return info.Env().Undefined();
+}
+
+// pushSongAudio(interleavedLR:Float32Array, sourceRate:number, startFrame:number) -> boolean
+// startFrame: the producer AudioContext frame of the chunk's first sample.
+Napi::Value PushSongAudio(const Napi::CallbackInfo& info)
+{
+    auto env = info.Env();
+    auto liveEngine = snapshotEngine();
+    if (!liveEngine || info.Length() < 3 || !info[0].IsTypedArray() || !info[1].IsNumber()
+        || !info[2].IsNumber())
+        return Napi::Boolean::New(env, false);
+    auto ta = info[0].As<Napi::TypedArray>();
+    if (ta.TypedArrayType() != napi_float32_array)
+        return Napi::Boolean::New(env, false);
+    auto f32 = info[0].As<Napi::Float32Array>();
+    const size_t samples = f32.ElementLength();
+    if (samples < 2)
+        return Napi::Boolean::New(env, false);
+    const bool ok = liveEngine->pushSongAudio(f32.Data(), (int) (samples / 2),
+        info[1].As<Napi::Number>().DoubleValue(), info[2].As<Napi::Number>().DoubleValue());
+    return Napi::Boolean::New(env, ok);
+}
+
+// getSongBusClock() -> {valid, heardSourceFrame, sourceFramesPerSecond,
+//                       outputLatencyMs, fillFrames, ageMs}
+// heardSourceFrame is the producer-context frame reaching the speakers at
+// the moment of this call (ageMs = 0 here; the renderer adds its IPC return).
+Napi::Value GetSongBusClock(const Napi::CallbackInfo& info)
+{
+    auto env = info.Env();
+    auto liveEngine = snapshotEngine();
+    auto obj = Napi::Object::New(env);
+    obj.Set("valid", false);
+    if (!liveEngine) return obj;
+    const auto c = liveEngine->getSongBusClock();
+    obj.Set("valid", c.valid);
+    obj.Set("heardSourceFrame", c.heardSourceFrame);
+    obj.Set("sourceFramesPerSecond", c.sourceFramesPerSecond);
+    obj.Set("outputLatencyMs", c.outputLatencyMs);
+    obj.Set("fillFrames", c.fillFrames);
+    return obj;
+}
+
+// getSongBusMetrics() -> same shape as getRendererBusMetrics
+Napi::Value GetSongBusMetrics(const Napi::CallbackInfo& info)
+{
+    auto env = info.Env();
+    auto liveEngine = snapshotEngine();
+    auto obj = Napi::Object::New(env);
+    if (!liveEngine) return obj;
+    const auto m = liveEngine->getSongBusMetrics();
+    obj.Set("enabled", m.enabled);
+    obj.Set("fillFrames", m.fillFrames);
+    obj.Set("capacityFrames", m.capacityFrames);
+    obj.Set("pushedFrames", (double) m.pushedFrames);
+    obj.Set("consumedFrames", (double) m.consumedFrames);
+    obj.Set("underflowCount", (double) m.underflowCount);
+    obj.Set("overflowCount", (double) m.overflowCount);
+    return obj;
+}
+
 // getStreamSinkLevel() -> number (peak 0..1+)
 Napi::Value GetStreamSinkLevel(const Napi::CallbackInfo& info)
 {

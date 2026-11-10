@@ -26,4 +26,18 @@ public:
 
     // The live device sample rate the ring samples were captured at.
     virtual double getCurrentSampleRate() const = 0;
+
+    // Capture timing of the newest input block: `ringIndex` is the ring index
+    // just past its last sample, `wallMs` the juce hi-res millisecond counter
+    // when that block's device callback started. false until a block lands.
+    virtual bool getInputStamp(uint64_t& ringIndex, double& wallMs) const
+    {
+        (void) ringIndex; (void) wallMs;
+        return false;
+    }
+
+    // How long before its block's callback the NEWEST sample of a block left
+    // the converter (seconds): the device's reported input latency minus one
+    // buffer (drivers report latency for the block's first sample).
+    virtual double getCaptureLatencySec() const { return 0.0; }
 };

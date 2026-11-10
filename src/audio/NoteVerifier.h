@@ -32,6 +32,7 @@
 #include <juce_core/juce_core.h>
 #include "ChordScorer.h"
 #include "OnsetDetector.h"
+#include "engine/PlayheadModel.h"
 #include <atomic>
 #include <cstdint>
 #include <deque>
@@ -132,6 +133,9 @@ private:
     // song time, advanced by wall-clock elapsed since the push while playing.
     // Freezes on a stale push (renderer tick stopped) or when paused.
     double currentPlayhead() const;
+    // The same playhead model evaluated at any wall time (juce hi-res ms) —
+    // e.g. when an input block was captured. See setPlayhead for the model.
+    double playheadAt(double wallMs) const;
 
     // Per-note finalized state, parallel to `chart`. The harmonic-comb scores
     // every open-window note each tick; a note that is ever confirmed present
@@ -200,6 +204,9 @@ private:
     double pushedSongTime = 0.0;
     double pushedReceiptMs = 0.0;  // getMillisecondCounterHiRes() at push
     bool   pushedPlaying = false;
+    // The song clock rebuilt from the pushes (rate-measured, IPC-delay
+    // filtered): see engine/PlayheadModel.h. Guarded by `lock`.
+    slopsmith::PlayheadModel playheadModel;
     // One-way latch (false→true on first push, reset by setChart). Read
     // lock-free at the top of run(); a slightly stale read is harmless.
     std::atomic<bool> havePushedPlayhead { false };

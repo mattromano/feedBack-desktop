@@ -16,12 +16,17 @@ constexpr int kFluxHistFrames = 32;
 constexpr float  kGuitarThresholdK      = 1.8f;
 // Minimum gap between onsets — a guitarist cannot pick faster than this.
 constexpr double kGuitarDebounceSeconds = 0.040;
-// Net onset-timing calibration: the reported attack sits this far before the
-// flux-peak frame's end. Absorbs the flux-peak-vs-attack lag (the transient
-// takes time to fill the analysis window) plus residual chain latency. Tuned
-// from the live timing-error median (~50 ms centres it). Stored in seconds and
-// converted to samples per device rate so it holds at 44.1 kHz, 96 kHz, etc.
-constexpr double kGuitarBackdateSeconds = 0.050;
+// Onset backdate: the reported attack sits this far before the flux-peak
+// frame's end — the detector's OWN lag (the transient has to reach the middle
+// of the 1024-sample window before the flux peaks). Measured on synthetic
+// picks with a known attack sample (tests/onset_lag): 497-566 samples at
+// 44.1/48/96 kHz, any block size, soft or hard — a constant in SAMPLES, since
+// the STFT is sized in samples. It is ONLY the detector lag: capture latency
+// and the callback stamp are compensated in NoteVerifier, display latency is
+// the player's A/V + guitar-latency calibration. (It was 50 ms, tuned from live
+// medians — that silently absorbed ~8 ms of uncompensated capture latency and
+// the tuner's own display latency, and was wrong at any other rate.)
+constexpr int kGuitarBackdateSamples = 525;
 // Flux band: 70 Hz (below the lowest guitar fundamental's skirt) to 3 kHz —
 // picks carry strong broadband energy here; rumble/hiss outside only add noise.
 constexpr double kGuitarBandLoHz = 70.0;
@@ -37,7 +42,7 @@ constexpr double kGuitarBandHiHz = 3000.0;
 // true attack — and should be calibrated against the bass bench.
 constexpr float  kBassThresholdK      = 1.4f;
 constexpr double kBassDebounceSeconds = 0.050;
-constexpr double kBassBackdateSeconds = 0.060;
+constexpr int kBassBackdateSamples = 680;
 constexpr double kBassBandLoHz = 40.0;
 constexpr double kBassBandHiHz = 2000.0;
 } // namespace
@@ -74,7 +79,7 @@ void OnsetDetector::applyProfile()
     {
         thresholdK      = kBassThresholdK;
         debounceSeconds = kBassDebounceSeconds;
-        backdateSeconds = kBassBackdateSeconds;
+        backdateSamples = kBassBackdateSamples;
         bandLoHz        = kBassBandLoHz;
         bandHiHz        = kBassBandHiHz;
     }
@@ -82,7 +87,7 @@ void OnsetDetector::applyProfile()
     {
         thresholdK      = kGuitarThresholdK;
         debounceSeconds = kGuitarDebounceSeconds;
-        backdateSeconds = kGuitarBackdateSeconds;
+        backdateSamples = kGuitarBackdateSamples;
         bandLoHz        = kGuitarBandLoHz;
         bandHiHz        = kGuitarBandHiHz;
     }
@@ -91,8 +96,8 @@ void OnsetDetector::applyProfile()
     const double binHz = sampleRate / kWindow;
     loBin = std::max(1, (int) std::floor(bandLoHz / binHz));
     hiBin = std::min(kWindow / 2, (int) std::ceil(bandHiHz / binHz));
-    // Onset backdate in samples, so the timing calibration is rate-independent.
-    onsetBackdateSamples = (int) std::lround(backdateSeconds * sampleRate);
+    // The backdate is a detector property in samples (see kGuitarBackdateSamples).
+    onsetBackdateSamples = backdateSamples;
 }
 
 void OnsetDetector::setProfile(bool bass)
