@@ -43,6 +43,11 @@ jobs:
       - name: TypeScript type check
         run: npm run typecheck
 
+      # Fast lane only (source-reading tests, ~2 s). The engine-loading tests in
+      # tests/engine/ need a built native addon and are run locally on demand.
+      - name: Fast tests
+        run: npm run test:fast
+
       - name: npm audit
         run: npm audit --audit-level=high
         continue-on-error: true

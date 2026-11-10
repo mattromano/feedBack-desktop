@@ -1,0 +1,97 @@
+{
+  "schema_version": 1,
+  "started_at": "2026-11-07T20:48:45.568531+00:00",
+  "current_phase": 5,
+  "phases": {
+    "0": {
+      "name": "Triage",
+      "status": "done",
+      "gates": {},
+      "started_at": "2026-11-07T20:48:45.568531+00:00",
+      "completed_at": "2026-11-07T20:50:20.953556+00:00"
+    },
+    "1": {
+      "name": "Audit",
+      "status": "done",
+      "gates": {},
+      "started_at": "2026-11-07T20:50:20.953556+00:00",
+      "completed_at": "2026-11-09T14:33:34.237429+00:00"
+    },
+    "2": {
+      "name": "Safety Net",
+      "status": "done",
+      "gates": {},
+      "started_at": "2026-11-09T14:33:34.238429+00:00",
+      "completed_at": "2026-11-09T14:47:39.483445+00:00"
+    },
+    "3": {
+      "name": "Refactor",
+      "status": "done",
+      "gates": {},
+      "started_at": "2026-11-09T14:47:39.483445+00:00",
+      "completed_at": "2026-11-09T16:08:29.044296+00:00"
+    },
+    "4": {
+      "name": "Hardening",
+      "status": "done",
+      "gates": {},
+      "started_at": "2026-11-09T16:08:29.044296+00:00",
+      "completed_at": "2026-11-09T16:14:35.232063+00:00"
+    },
+    "5": {
+      "name": "Handover",
+      "status": "in_progress",
+      "gates": {},
+      "started_at": "2026-11-09T16:14:35.232063+00:00"
+    }
+  },
+  "baseline": {
+    "git_tag": "pre-refactor-baseline",
+    "branch": "refactor/untangle-2026-11-07",
+    "total_loc": 53008,
+    "file_count": 408,
+    "test_count": 155,
+    "tests_passing": 155,
+    "tests_failing": 0,
+    "code_file_count": 203,
+    "dependency_count": {
+      "dependencies": 3,
+      "devDependencies": 5
+    },
+    "test_note": "Baseline run: 24 files (155 pass, 0 fail), incl. config-bootstrap + config-reset (temp dirs only). Going forward the safe set is 22 files (RUNNING.md); 6 engine-loading files left to CI"
+  },
+  "stack": [
+    "electron",
+    "typescript",
+    "vanilla-js-renderer",
+    "cpp-juce-node-addon",
+    "vst-sandbox",
+    "python-bundled-core"
+  ],
+  "top_5_signed_off_at": "2026-11-09T14:33:29Z",
+  "overrides": [
+    {
+      "timestamp": "2026-11-09T16:14:35.080914+00:00",
+      "phase": "4",
+      "gate": "Lint config present",
+      "reason": "User override 2026-11-09: boundary rules enforced by tests/boundaries.test.js in the CI fast lane instead of ESLint (no new deps / CI runtime)"
+    },
+    {
+      "timestamp": "2026-11-09T16:14:35.160636+00:00",
+      "phase": "4",
+      "gate": "Pre-commit hooks configured",
+      "reason": "User override 2026-11-09: hook script committed (scripts/hooks/pre-commit); installing into .git/hooks was blocked by the permission check - user to run npm run hooks:install"
+    }
+  ],
+  "stack_reference_note": "No matching stack file; read node-express.md as the closest (Node process) and applied its general patterns",
+  "last_test_run": {
+    "timestamp": "2026-11-07T20:50:11.101125+00:00",
+    "passing": true,
+    "passing_count": 155,
+    "failing_count": 0
+  },
+  "user_ack": {
+    "audit_duration": "2026-11-07: user asked to audit and set up (scope confirmed)"
+  },
+  "next_action": "Phase 5: handover written and tagged refactor-complete-2026-11-09 (local). User to read HANDOVER.md and confirm completion; branch left unmerged/unpushed for the user"
+}

@@ -8,7 +8,7 @@
 // EXPECTED-FAIL / QUARANTINED: needs the built addon, drives a known race
 // repeatedly (a single clean run proves nothing for a race), and initializes
 // JUCE in-process. Run explicitly with:
-//   CHAIN_STORM=1 node --test tests/chain-mutation-storm.test.js
+//   CHAIN_STORM=1 node --test tests/engine/chain-mutation-storm.test.js
 'use strict';
 
 const test = require('node:test');
@@ -17,7 +17,7 @@ const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
 
-const ADDON = path.join(__dirname, '..', 'build', 'Release', 'slopsmith_audio.node');
+const ADDON = path.join(__dirname, '..', '..', 'build', 'Release', 'slopsmith_audio.node');
 const ENABLED = process.env.CHAIN_STORM === '1';
 const ITERATIONS = 50;
 

@@ -1,0 +1,2 @@
+# Shell scripts run under sh/bash must keep LF line endings on Windows checkouts.
+scripts/hooks/pre-commit text eol=lf

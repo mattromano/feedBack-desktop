@@ -25,7 +25,7 @@
 import { BrowserWindow, ipcMain, screen } from 'electron';
 import { IPC_PANE_SYNC } from './ipc-channels';
 import { sanitizeWindowBounds, type WindowSizing } from './window-bounds';
-import { getDesktopConfig, setDesktopConfig, type SavedPaneWindow } from './soundfont-manager';
+import { getDesktopConfig, setDesktopConfig, type SavedPaneWindow } from './desktop-config';
 import { setTrayPanes, type TrayPane } from './pane-tray';
 
 // The renderer names the frame `fbpane-<paneId>`. Keep in sync with

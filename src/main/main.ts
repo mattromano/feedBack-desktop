@@ -123,7 +123,8 @@ import {
 import { initAudioBridge, shutdownAudio } from './audio-bridge';
 import { initDebugLogging, isDebugEnabled } from './debug-log';
 import { initPluginManager } from './plugin-manager';
-import { initSoundfontManager, getDesktopConfig, setDesktopConfig } from './soundfont-manager';
+import { initSoundfontManager } from './soundfont-manager';
+import { getDesktopConfig, setDesktopConfig } from './desktop-config';
 import * as updateManager from './update-manager';
 import type { UpdateChannel } from './update-manager';
 import { installAppMenu } from './app-menu';

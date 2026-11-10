@@ -9,7 +9,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const path = require('node:path');
 
-const ADDON = path.join(__dirname, '..', 'build', 'Release', 'slopsmith_audio.node');
+const ADDON = path.join(__dirname, '..', '..', 'build', 'Release', 'slopsmith_audio.node');
 
 let audio;
 try {

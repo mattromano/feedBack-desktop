@@ -1,0 +1,601 @@
+{
+  "schema_version": 1,
+  "baseline_commit": "e610887",
+  "issues": [
+    {
+      "id": "I-001",
+      "title": "Engine tests run nowhere; npm test mixes fast and engine-loading tests",
+      "severity": "critical",
+      "category": "risk",
+      "files": [
+        "package.json:13",
+        ".github/workflows/ci.yml:39-48",
+        "tests/CMakeLists.txt:15-18"
+      ],
+      "description": "CI runs no JS or C++ unit tests; the 6 engine-loading JS tests cannot run on the owner machine.",
+      "status": "done",
+      "refactor_plan": "Move engine tests to tests/engine/, add test:fast/test:engine (test=fast), add one npm run test:fast step to the existing ci.yml check job. User scope 2026-11-07: no new CI jobs, no engine lane, nothing added to build.yml/release builds.",
+      "commits": [
+        "f155640",
+        "1d2d250"
+      ],
+      "safety_net": {
+        "type": "unit_test",
+        "location": "tests/test-inventory.test.js",
+        "status": "verified",
+        "broken_then_fixed": false,
+        "covers": "Pins all 35 node:test files (none dropped/duplicated by the move to tests/engine/) and that only the 6 engine files load the native addon."
+      }
+    },
+    {
+      "id": "I-002",
+      "title": "Desktop config store lives in soundfont-manager and a corrupt file wipes all prefs",
+      "severity": "critical",
+      "category": "boundary",
+      "files": [
+        "src/main/soundfont-manager.ts:32-79",
+        "src/main/main.ts:126,514-523",
+        "src/main/pane-hosts.ts:28",
+        "src/main/python.ts:12"
+      ],
+      "description": "Parse failure returns {} and the next write drops every setting; the module also causes a require cycle.",
+      "status": "done",
+      "refactor_plan": "Extract desktop-config.ts (re-export for one release); on parse failure keep a .corrupt backup and do not overwrite blindly; add a test.",
+      "commits": [
+        "34c14bc",
+        "ec74899"
+      ],
+      "safety_net": {
+        "type": "unit_test",
+        "location": "tests/desktop-config.test.js",
+        "status": "verified",
+        "broken_then_fixed": true,
+        "covers": "Missing file -> {}, pretty atomic write (no .tmp left), shallow merge keeps unknown keys, corrupt file -> {} then next set writes, import sites in main/pane-hosts/python.",
+        "proof": "Dropping the 2-space indent in setDesktopConfig failed the test; reverted."
+      }
+    },
+    {
+      "id": "I-003",
+      "title": "Renderer tone switchers duplicated and drifted; two song-load pipelines race on the chain",
+      "severity": "high",
+      "category": "duplication",
+      "files": [
+        "src/renderer/screen.js:2301-2340,2682-2797,3308-3324",
+        "src/renderer/screen.js:4755-4893,4970-4995,5029-5157",
+        "src/renderer/screen.js:4445-4464,3227-3233"
+      ],
+      "description": "IIFE2 copies of the bypass/MIDI switchers lack tonePresetNameMap and normalizeTimelineToneData; the IIFE2 preload is not serialized by _applyToneMappingsLock.",
+      "status": "done",
+      "refactor_plan": "Add vm tests, export one switcher factory + chain-job lock from IIFE1, call from IIFE2; verify on the packaged build.",
+      "commits": [
+        "36ffd5a"
+      ],
+      "safety_net": {
+        "type": "unit_test",
+        "location": "tests/tone-switcher-parity.test.js",
+        "status": "verified",
+        "broken_then_fixed": true,
+        "covers": "IIFE1 ToneSwitcher preload+switch engine calls pinned; IIFE2 bypass switcher must issue identical calls; all 3 MIDI switcher copies must send identical program changes. Records the tonePresetNameMap drift.",
+        "proof": "Flipping bypassed:false to true in the IIFE2 switcher failed the parity test; reverted.",
+        "manual_checks": [
+          "Packaged build: song with tone changes, auto-switch on -> tones switch at the right points, chain panel shows the right preset names",
+          "Packaged build: MIDI PC song -> program changes reach the VST, chain is not wiped",
+          "Packaged build: song with a whole-song tone lock -> locked preset holds through tone changes",
+          "Packaged build: start one song then quickly another -> chain ends up with the second song's presets only (preload race)"
+        ],
+        "automated_app_checks": {
+          "date": "2026-11-09",
+          "build": "release/win-unpacked from 36ffd5a, driven over CDP",
+          "tone_changes": "PASS (Helena, manual bypass: Twin/Mesa slots swap at 26.6/72.8/74.7 s; tonePresetNameMap present)",
+          "midi": "Program changes correct (clean->2, lead->5, back->2); chain wiped on song load - same on the previous code (A/B), pre-existing, deferred",
+          "tone_lock": "PASS (Main Lead held through tone changes)",
+          "quick_switch": "PASS 25/25 manual bypass, 25/25 Tone Automation (gaps 300-1600 ms, Helena -> Dead!)",
+          "not_covered": "How it sounds; whether the VST actually changes patch on MIDI"
+        }
+      },
+      "outcome": "Shared bypassSwitchToTone/makeMidiToneSwitcher (2 bypass + 3 MIDI copies folded), IIFE2 switcher gains tonePresetNameMap, IIFE2 song preload runs under window._aeWithToneChainLock. Unit tests green; packaged-build listening checklist (safety_net.manual_checks) pending with the user."
+    },
+    {
+      "id": "I-004",
+      "title": "~40 copies of fail-soft addon-call boilerplate; ~15 native calls unguarded",
+      "severity": "high",
+      "category": "duplication",
+      "files": [
+        "src/main/audio-bridge.ts:505-1205",
+        "src/main/audio-bridge.ts:602-612,728,1010,1031,1035,1040-1056,1212,1240,1273-1298"
+      ],
+      "description": "Same typeof-guard/try/warn/default pattern copied ~40 times; inconsistent guarding lets native throws reject into the renderer.",
+      "status": "done",
+      "refactor_plan": "callAddon(name, fallback, ...args) + PITCH_NONE, one handler group per commit; keep literal ipcMain.handle lines, defaults and warn text.",
+      "commits": [
+        "caab1da"
+      ],
+      "safety_net": {
+        "type": "snapshot",
+        "location": "tests/audio-bridge-fallbacks.test.js + tests/fixtures/audio-bridge-fallbacks.snapshot.json",
+        "status": "verified",
+        "broken_then_fixed": true,
+        "covers": "All 111 audio:* IPC handlers called with addon missing / every export throwing / every export returning; return values, throws/rejections and warn/error text snapshotted.",
+        "proof": "Changing addSource's no-addon default (-1 -> -2) and the detectNotes warning text each failed the test; reverted. Snapshot shows 55 handlers that throw when the addon throws (unguarded) - guarding them is a behaviour change to decide explicitly in Phase 3."
+      },
+      "outcome": "Only 7 handlers were exact copies of guard/try/warn/fallback; those now use callAddon(). The audit's ~40 figure counted sites with argument validation, silent catches or no try at all; converting those would change behaviour (see deferred.md)."
+    },
+    {
+      "id": "I-005",
+      "title": "No lockfile: every build resolves deps fresh (Electron ABI drift)",
+      "severity": "high",
+      "category": "dependency",
+      "files": [
+        ".gitignore:52",
+        ".github/workflows/ci.yml:39",
+        ".github/workflows/addon-ci.yml:177",
+        "scripts/build-common.sh:296",
+        "package.json:148-152"
+      ],
+      "description": "package-lock.json is gitignored; CI and local builds can get different Electron/TypeScript.",
+      "status": "deferred",
+      "refactor_plan": "Track package-lock.json, switch CI to npm ci, wire or drop .build-config.json versions.electron.",
+      "commits": []
+    },
+    {
+      "id": "I-006",
+      "title": "Bundling skips failed plugin clones and desktop-plugin copies silently",
+      "severity": "critical",
+      "category": "risk",
+      "files": [
+        "scripts/build-common.sh:211-215,233",
+        "scripts/bundle-slopsmith.sh:185"
+      ],
+      "description": "git clone 2>/dev/null || echo skipped; a green release can ship without a plugin.",
+      "status": "done",
+      "refactor_plan": "Show stderr; fail when cloned != total unless ALLOW_MISSING_PLUGINS=1; fail loudly on the desktop plugin copy.",
+      "commits": [
+        "d6625c5"
+      ],
+      "safety_net": {
+        "type": "integration_test",
+        "location": "tests/build-plugin-clone.test.js",
+        "status": "verified",
+        "broken_then_fixed": true,
+        "covers": "Runs real clone_slopsmith() in bash (set -euo pipefail) with git stubbed: pins the 38 plugin dirs, the skipped/Cloned N of M report on a failed plugin clone (exit 0 today, I-006 flips it), and that a failed core clone aborts.",
+        "proof": "Deleting the scorecard entry and renaming five_fret to five-fret both failed the test; reverted. Note: the repo->dirname fallback rule is dead code (every entry has an explicit dirname), so breaking it is not detected."
+      }
+    },
+    {
+      "id": "I-007",
+      "title": "restartPython races: no serialization, unawaited, port can drift",
+      "severity": "high",
+      "category": "risk",
+      "files": [
+        "src/main/python.ts:943-947,699,848-849",
+        "src/main/main.ts:1325-1342"
+      ],
+      "description": "Two quick restarts spawn two backends; renderer stays on :18000 while the server moves to :18001; Windows grandchildren survive.",
+      "status": "deferred",
+      "refactor_plan": "Serialize through one in-flight promise that awaits the old child close before spawning.",
+      "commits": []
+    },
+    {
+      "id": "I-008",
+      "title": "localStorage schemas (tone mappings, presets, signal chain) parsed and written by hand",
+      "severity": "high",
+      "category": "duplication",
+      "files": [
+        "src/renderer/screen.js:2545,4812,4910,2981,2999,3011",
+        "src/renderer/screen.js:1988,2654",
+        "src/renderer/screen.js:1191,1269,2406,2426,2446,2602,2723,4879"
+      ],
+      "description": "Raw JSON.parse/setItem bypass the defensive reader; quota errors can throw mid-handler. User data.",
+      "status": "deferred",
+      "refactor_plan": "window._aeStore accessors with round-trip tests first.",
+      "commits": []
+    },
+    {
+      "id": "I-009",
+      "title": "JSON config files read/written 4 ways; audio settings write is not atomic",
+      "severity": "medium",
+      "category": "duplication",
+      "files": [
+        "src/main/soundfont-manager.ts:73-79",
+        "src/main/audio-bridge.ts:209-221",
+        "src/main/vst-crash-guard.ts:86",
+        "src/main/python.ts:435-441"
+      ],
+      "description": "A crash mid-write can lose device settings.",
+      "status": "deferred",
+      "refactor_plan": "src/main/json-file.ts readJson/writeJsonAtomic.",
+      "commits": []
+    },
+    {
+      "id": "I-010",
+      "title": "Resource/config path resolution computed independently in several modules",
+      "severity": "medium",
+      "category": "duplication",
+      "files": [
+        "src/main/main.ts:301-305",
+        "src/main/audio-bridge.ts:232-236,308-310",
+        "src/main/python.ts:107-129,410-421,542,582-586,636-657",
+        "src/main/config-paths.ts:223-225"
+      ],
+      "description": "getConfigDir uses process.env.HOME (unset on Windows) and mkdirs on read.",
+      "status": "deferred",
+      "refactor_plan": "src/main/app-paths.ts; the HOME change needs user confirmation.",
+      "commits": []
+    },
+    {
+      "id": "I-011",
+      "title": "~125 IPC channel names are bare strings; ipc-channels.ts covers ~19",
+      "severity": "medium",
+      "category": "boundary",
+      "files": [
+        "src/main/ipc-channels.ts",
+        "src/main/preload.ts:301-570",
+        "src/main/preload.ts:47",
+        "src/main/update-manager.ts:89",
+        "src/main/main.ts:1371"
+      ],
+      "description": "Channels and the UpdateChannel type are defined in several places.",
+      "status": "deferred",
+      "refactor_plan": "Constants only after tests/contracts/extract.js handles them.",
+      "commits": []
+    },
+    {
+      "id": "I-012",
+      "title": "Duplex vs split output callbacks repeat the mix tail",
+      "severity": "medium",
+      "category": "duplication",
+      "files": [
+        "src/audio/AudioEngine.cpp:1113-1182",
+        "src/audio/AudioEngine.cpp:1337-1411"
+      ],
+      "description": "~60 lines copied; heard-clock-wiring.test.js pins exact occurrence counts.",
+      "status": "deferred",
+      "refactor_plan": "Extract pure noexcept backingRms/meterPeak first; leave stamping and locks in place.",
+      "commits": []
+    },
+    {
+      "id": "I-013",
+      "title": "N-API int parsing bypasses NapiHelpers (~25 raw Int32Value)",
+      "severity": "medium",
+      "category": "duplication",
+      "files": [
+        "src/audio/addon/DetectionBindings.cpp:27-35,188,299-609",
+        "src/audio/addon/DeviceBindings.cpp:321-842",
+        "src/audio/addon/ControlBindings.cpp:46",
+        "src/audio/addon/ChainOps.cpp:682,743,806"
+      ],
+      "description": "NaN coerced to 0; As<String>() without IsString.",
+      "status": "deferred",
+      "refactor_plan": "Convert one file at a time to argInt/argSlotId.",
+      "commits": []
+    },
+    {
+      "id": "I-014",
+      "title": "Ring consume and seqlock patterns open-coded 3x each",
+      "severity": "medium",
+      "category": "duplication",
+      "files": [
+        "src/audio/AudioEngine.cpp:1250-1333,1444-1473",
+        "src/audio/engine/StreamSink.cpp:87-104",
+        "src/audio/SourceChain.cpp:235-241",
+        "src/audio/engine/RendererBus.h:229-317"
+      ],
+      "description": "Timing-critical code duplicated.",
+      "status": "deferred",
+      "refactor_plan": "PackedStereoRing::consume and SeqlockStamp<T> with unit tests; deferred until timing is re-verified.",
+      "commits": []
+    },
+    {
+      "id": "I-015",
+      "title": "Legacy vs per-source binding marshalling duplicated; 5 near-identical AsyncWorkers",
+      "severity": "medium",
+      "category": "duplication",
+      "files": [
+        "src/audio/addon/DetectionBindings.cpp:119-147,245-449",
+        "src/audio/addon/DeviceBindings.cpp:631-860,893-934",
+        "src/audio/addon/ChainOps.cpp:103-148,419,636-819"
+      ],
+      "description": "DeviceBindings.cpp holds non-device bindings.",
+      "status": "deferred",
+      "refactor_plan": "toJs helpers; NAM/IR via queueChainSlotMutation.",
+      "commits": []
+    },
+    {
+      "id": "I-016",
+      "title": "CI signing, vpk pack and vpk version copied across 3 workflows",
+      "severity": "medium",
+      "category": "duplication",
+      "files": [
+        ".github/workflows/build.yml:95-132,289,325-459",
+        ".github/workflows/nightly.yml:114-317",
+        ".github/workflows/rc.yml:86-110",
+        "package.json:145"
+      ],
+      "description": "Already drifting (--noPortable, macos-14 vs 15).",
+      "status": "deferred",
+      "refactor_plan": "Composite actions; read the vpk version from package.json.",
+      "commits": []
+    },
+    {
+      "id": "I-017",
+      "title": "Bundling split across three dispatchers; SLOPSMITH_DIR discovery copied",
+      "severity": "medium",
+      "category": "duplication",
+      "files": [
+        "scripts/bundle.sh:14-22",
+        "scripts/build-windows.sh:124-130",
+        "scripts/bundle-slopsmith.sh:19-27",
+        "package.json:14,26"
+      ],
+      "description": "npm run dist:win and CI take different paths.",
+      "status": "deferred",
+      "refactor_plan": "resolve_slopsmith_dir helper; dist:* calls build-release.sh; move the copier to scripts/copy-static.js.",
+      "commits": []
+    },
+    {
+      "id": "I-018",
+      "title": "~37 window._ae* globals form the cross-IIFE bus; _toneSwitcher written from 18 places",
+      "severity": "medium",
+      "category": "boundary",
+      "files": [
+        "src/renderer/screen.js:2471-4392",
+        "src/renderer/screen.js:4743-5135"
+      ],
+      "description": "The class of bug behind issue #12.",
+      "status": "deferred",
+      "refactor_plan": "hookState.tone with set/get; keep window aliases.",
+      "commits": []
+    },
+    {
+      "id": "I-019",
+      "title": "Device-settings validation duplicated across the IPC boundary",
+      "severity": "low",
+      "category": "boundary",
+      "files": [
+        "src/renderer/screen.js:155-192",
+        "src/main/audio-bridge.ts:55-96"
+      ],
+      "description": "Main already normalizes on read and write.",
+      "status": "deferred",
+      "refactor_plan": "Keep the renderer copy only for the one-time migration.",
+      "commits": []
+    },
+    {
+      "id": "I-020",
+      "title": "DeviceSetup and bindings reach into engine internals",
+      "severity": "medium",
+      "category": "boundary",
+      "files": [
+        "src/audio/AudioEngine.cpp:568-570,588",
+        "src/audio/AudioEngine.h:32-34,413"
+      ],
+      "description": "6 references passed to applySplit; raw SourceChain*; 3 unused manager getters.",
+      "status": "deferred",
+      "refactor_plan": "Delete the unused getters; later a SplitOutputPort struct.",
+      "commits": []
+    },
+    {
+      "id": "I-021",
+      "title": "Test-only loopback lives in production audio callbacks",
+      "severity": "medium",
+      "category": "boundary",
+      "files": [
+        "src/audio/AudioEngine.h:542-548",
+        "src/audio/AudioEngine.cpp:851-862,1089-1103,1184-1194"
+      ],
+      "description": "Env-gated but evaluated every duplex block.",
+      "status": "deferred",
+      "refactor_plan": "engine/TestLoopback.h hooks, compiled out unless SLOPSMITH_TEST_HOOKS.",
+      "commits": []
+    },
+    {
+      "id": "I-022",
+      "title": "C++ test targets compiled into every release addon build",
+      "severity": "low",
+      "category": "boundary",
+      "files": [
+        "CMakeLists.txt:61-64",
+        "tests/CMakeLists.txt:72"
+      ],
+      "description": "SLOPSMITH_BUILD_TESTS defaults ON; the tests never run.",
+      "status": "deferred",
+      "refactor_plan": "OFF in release builds, ON in the CI engine lane.",
+      "commits": []
+    },
+    {
+      "id": "I-023",
+      "title": "Dead code batch (IPC, renderer, addon exports, engine methods, repo leftovers)",
+      "severity": "low",
+      "category": "dead_code",
+      "files": [
+        "src/main/plugin-manager.ts:218-221",
+        "src/renderer/screen.js:28,110-112,2791,3409",
+        "src/audio/NodeAddon.cpp:344,361",
+        "src/audio/AudioEngine.h:13-23",
+        "src/audio/addon/Bindings.h:116-117",
+        "tests/spike/",
+        "scripts/dev/renderer-bus-spike.js"
+      ],
+      "description": "See REFACTOR_AUDIT.md section 7; keep diagnostics used from DevTools and getLatencyBreakdown.",
+      "status": "deferred",
+      "refactor_plan": "One commit per area after a fresh grep including tests/.",
+      "commits": []
+    },
+    {
+      "id": "I-024",
+      "title": "Windows bundled binaries are unpinned 'latest' with no checksum",
+      "severity": "medium",
+      "category": "dependency",
+      "files": [
+        "scripts/build-windows.sh:108,184,224",
+        "scripts/bundle-binaries.sh:139"
+      ],
+      "description": "macOS is pinned in .build-config.json.",
+      "status": "deferred",
+      "refactor_plan": "Pinned URL + sha256 for Windows ffmpeg/vgmstream.",
+      "commits": []
+    },
+    {
+      "id": "I-025",
+      "title": "package.json version frozen at 0.3.0 while tags are v0.4.17",
+      "severity": "high",
+      "category": "dependency",
+      "files": [
+        "package.json:3,39",
+        "src/main/update-manager.ts:173",
+        "src/main/main.ts:1197",
+        "scripts/release-rockband.sh:15-33"
+      ],
+      "description": "app.getVersion, the Linux updater and the migration stamp report 0.3.0.",
+      "status": "deferred",
+      "refactor_plan": "npm version --no-git-tag-version from the tag in the build step.",
+      "commits": []
+    },
+    {
+      "id": "I-026",
+      "title": "Bundle strips rig_builder/vst while song tones store absolute paths; local builds differ from CI",
+      "severity": "critical",
+      "category": "risk",
+      "files": [
+        "scripts/bundle-slopsmith.sh:176"
+      ],
+      "description": "Song tones break after a CI release; local builds hide it.",
+      "status": "deferred",
+      "refactor_plan": "Explicit BUNDLE_RIG_VST flag here; the root fix belongs in the rig_builder plugin repo.",
+      "commits": []
+    },
+    {
+      "id": "I-027",
+      "title": "Renderer-supplied paths reach the filesystem unchecked; plugins:remove has no confirm",
+      "severity": "high",
+      "category": "risk",
+      "files": [
+        "src/main/audio-bridge.ts:1219-1225,1375",
+        "src/main/plugin-manager.ts:156-173"
+      ],
+      "description": "Plugin scripts can reach these channels.",
+      "status": "deferred",
+      "refactor_plan": "Restrict savePluginList to userData; native confirm on plugins:remove.",
+      "commits": []
+    },
+    {
+      "id": "I-028",
+      "title": "Audio-thread hazards (fprintf, call_once/sigaction, alloc+mutex on crash, sandbox wait)",
+      "severity": "critical",
+      "category": "risk",
+      "files": [
+        "src/audio/AudioEngine.cpp:1033,1040,1240",
+        "src/audio/SignalChain.cpp:122-170,260-285",
+        "src/audio/Sandbox/SandboxedProcessor.cpp:503-524"
+      ],
+      "description": "Flag only; do not refactor inside the callbacks this cycle.",
+      "status": "deferred",
+      "refactor_plan": "Out of scope this cycle.",
+      "commits": []
+    },
+    {
+      "id": "I-029",
+      "title": "songBusPullScratch sized only by the input-side about-to-start",
+      "severity": "medium",
+      "category": "risk",
+      "files": [
+        "src/audio/AudioEngine.cpp:846,945-948,1430"
+      ],
+      "description": "Song audio silently dropped on an output-only start.",
+      "status": "deferred",
+      "refactor_plan": "Size it in audioOutputAboutToStart too.",
+      "commits": []
+    },
+    {
+      "id": "I-030",
+      "title": "Linux AppImage self-update never checks size/hash before rename",
+      "severity": "medium",
+      "category": "risk",
+      "files": [
+        "src/main/update-manager.ts:261-339"
+      ],
+      "description": "A truncated download replaces the running binary.",
+      "status": "deferred",
+      "refactor_plan": "Compare received vs content-length before renameSync.",
+      "commits": []
+    },
+    {
+      "id": "I-031",
+      "title": "Renderer meter/latency setIntervals leak on re-evaluation",
+      "severity": "low",
+      "category": "risk",
+      "files": [
+        "src/renderer/screen.js:1582-1588,1642"
+      ],
+      "description": "Pollers stack per re-evaluation.",
+      "status": "deferred",
+      "refactor_plan": "Keep handles in hookState and clear on start.",
+      "commits": []
+    },
+    {
+      "id": "I-032",
+      "title": "Global error handlers drop stacks; IPC registered inside createWindow",
+      "severity": "low",
+      "category": "risk",
+      "files": [
+        "src/main/main.ts:262-268,565,582,667"
+      ],
+      "description": "Hard to debug; second-handler throw on re-create.",
+      "status": "deferred",
+      "refactor_plan": "Log err.stack; move the handlers to the startup block.",
+      "commits": []
+    },
+    {
+      "id": "I-033",
+      "title": "upterm SSH session opens on every failed build while secrets are loaded",
+      "severity": "medium",
+      "category": "risk",
+      "files": [
+        ".github/workflows/build.yml:178-182",
+        ".github/workflows/nightly.yml:150",
+        ".github/workflows/rc.yml"
+      ],
+      "description": "Remote shell on a job holding signing secrets.",
+      "status": "deferred",
+      "refactor_plan": "Gate behind a workflow_dispatch debug input.",
+      "commits": []
+    }
+  ],
+  "top_5": [
+    "I-001",
+    "I-002",
+    "I-006",
+    "I-004",
+    "I-003"
+  ],
+  "deferred": [
+    "I-005",
+    "I-007",
+    "I-008",
+    "I-009",
+    "I-010",
+    "I-011",
+    "I-012",
+    "I-013",
+    "I-014",
+    "I-015",
+    "I-016",
+    "I-017",
+    "I-018",
+    "I-019",
+    "I-020",
+    "I-021",
+    "I-022",
+    "I-023",
+    "I-024",
+    "I-025",
+    "I-026",
+    "I-027",
+    "I-028",
+    "I-029",
+    "I-030",
+    "I-031",
+    "I-032",
+    "I-033"
+  ]
+}

@@ -182,7 +182,12 @@ for dp in "$PROJECT_DIR/src/renderer" "$PROJECT_DIR/src/renderer/plugin-manager"
     if [ -f "$dp/plugin.json" ]; then
         pname=$(python3 -c "import json, sys; print(json.load(open(sys.argv[1]))['id'])" "$dp/plugin.json")
         mkdir -p "$BUNDLE_DIR/plugins/$pname"
-        cp "$dp"/*.html "$dp"/*.js "$dp"/plugin.json "$BUNDLE_DIR/plugins/$pname/" 2>/dev/null || true
+        # plugin.json and the scripts are required; a page is optional
+        # (live-retune has none). A failed copy now fails the bundle.
+        cp "$dp"/plugin.json "$dp"/*.js "$BUNDLE_DIR/plugins/$pname/"
+        for f in "$dp"/*.html; do
+            if [ -e "$f" ]; then cp "$f" "$BUNDLE_DIR/plugins/$pname/"; fi
+        done
     fi
 done
 
