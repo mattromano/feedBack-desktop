@@ -2343,17 +2343,22 @@ window.__feedBackDesktopAudioHooks = window.__feedBackDesktopAudioHooks || {};
     }
     // The one manual "load this preset now" path (Settings → Load and the
     // instrument menu's top tones). Snapshots the chain so a failed load rolls back.
+    // Runs under the tone chain lock so it can't interleave with a song's chain
+    // rebuild, and refuses while a song is loading (that rebuild would replace it).
     async function loadPresetManually(name, source) {
         const p = getPresets()[name];
         if (!p) return false;
-        const ok = await replaceChainWithPresetBlob(p, `${source}:${name}`);
+        if (isSongTransitioning()) {
+            console.warn('[audio-engine] Not loading preset during a song load:', name);
+            return false;
+        }
+        const ok = await withToneChainLock(() => replaceChainWithPresetBlob(p, `${source}:${name}`));
         if (ok) {
             recordPresetUse(name);
             console.log('[audio-engine] Preset loaded:', name);
         }
         return ok;
     }
-    let _instMenuLastTone = null;
     let _instMenuLoading = null;
     function renderInstMenuTopTones(slot, ctx) {
         const presets = getPresets();
@@ -2368,10 +2373,9 @@ window.__feedBackDesktopAudioHooks = window.__feedBackDesktopAudioHooks || {};
         }
         slot.innerHTML = '<div class="pt-3 border-t border-fb-border/40">' + head + '<div class="flex flex-wrap gap-1">' +
             names.map((n) => {
-                const active = n === _instMenuLastTone;
                 const busy = n === _instMenuLoading;
                 return '<button type="button" data-top-tone="' + escHtml(n) + '" title="Load ' + escHtml(n) + '" ' +
-                    'class="px-2 py-1 rounded-md text-xs ' + (active ? 'bg-fb-primary text-white' : 'bg-gray-800/50 text-fb-textDim hover:text-fb-text') + '"' +
+                    'class="px-2 py-1 rounded-md text-xs ' + (busy ? 'bg-fb-primary text-white' : 'bg-gray-800/50 text-fb-textDim hover:text-fb-text') + '"' +
                     (_instMenuLoading ? ' disabled' : '') + '>' +
                     (stars.includes(n) ? '&#9733; ' : '') + escHtml(busy ? n + '…' : n) + '</button>';
             }).join('') + '</div></div>';
@@ -2381,8 +2385,7 @@ window.__feedBackDesktopAudioHooks = window.__feedBackDesktopAudioHooks || {};
             _instMenuLoading = name;
             ctx.refresh();
             try {
-                if (await loadPresetManually(name, 'inst-menu')) _instMenuLastTone = name;
-                else console.warn('[audio-engine] top tone failed to load:', name);
+                if (!(await loadPresetManually(name, 'inst-menu'))) console.warn('[audio-engine] top tone did not load:', name);
             } finally {
                 _instMenuLoading = null;
                 ctx.refresh();
@@ -2761,7 +2764,7 @@ window.__feedBackDesktopAudioHooks = window.__feedBackDesktopAudioHooks || {};
             const eName = escHtml(name);
             const starred = readPresetStars().includes(name);
             div.innerHTML = `
-                <button class="text-sm leading-none ${starred ? 'text-amber-400' : 'text-slate-500 hover:text-slate-300'}" data-preset="${eName}" data-action="star" title="${starred ? 'Unstar (remove from Top tones)' : 'Star (show in Top tones)'}">${starred ? '&#9733;' : '&#9734;'}</button>
+                <button class="text-sm leading-none ${starred ? 'text-amber-400' : 'text-slate-500 hover:text-fb-text'}" data-preset="${eName}" data-action="star" title="${starred ? 'Unstar (remove from Top tones)' : 'Star (show in Top tones)'}">${starred ? '&#9733;' : '&#9734;'}</button>
                 <span class="flex-1 text-slate-300">${eName}${name === defaultPresetName ? ' <span class="text-xs text-slate-500">(default)</span>' : ''}</span>
                 <span class="text-xs text-slate-500">${getPresetItems(presets[name]).length} processors</span>
                 <button class="text-xs px-2 py-1 rounded ${name === defaultPresetName ? 'bg-blue-700/60 text-slate-300 cursor-not-allowed' : 'bg-blue-600/50 hover:bg-blue-500'}" data-preset="${eName}" data-action="default" ${name === defaultPresetName ? 'disabled' : ''}>Default</button>

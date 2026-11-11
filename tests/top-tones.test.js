@@ -25,10 +25,14 @@ function extractFunction(src, name) {
     return src.slice(start, i);
 }
 
-function harness(presets, { loadOk = true } = {}) {
+function harness(presets, { loadOk = true, transitioning = false } = {}) {
     const store = {};
     const loads = [];
+    const locked = [];
     const ctx = {
+        isSongTransitioning: () => transitioning,
+        withToneChainLock: (job) => { locked.push(true); return job(); },
+        locked,
         console: { log() {}, warn() {} },
         localStorage: {
             getItem: (k) => (k in store ? store[k] : null),
@@ -76,7 +80,12 @@ test('a manual load counts a use; a failed one does not', async () => {
     const ok = harness(PRESETS);
     assert.equal(await ok.ctx.loadPresetManually('Main Lead', 'inst-menu'), true);
     assert.deepEqual(ok.loads, ['inst-menu:Main Lead']);
+    assert.equal(ok.ctx.locked.length, 1, 'the load runs under the tone chain lock');
     assert.equal(ok.ctx.readPresetUses()['Main Lead'], 1);
+
+    const mid = harness(PRESETS, { transitioning: true });
+    assert.equal(await mid.ctx.loadPresetManually('Main Lead', 'inst-menu'), false, 'no manual load during a song load');
+    assert.deepEqual(mid.loads, []);
 
     const bad = harness(PRESETS, { loadOk: false });
     assert.equal(await bad.ctx.loadPresetManually('Main Lead', 'inst-menu'), false);
