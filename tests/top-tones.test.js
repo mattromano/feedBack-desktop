@@ -116,6 +116,7 @@ test('wiring: Settings Load and tone automation count uses; delete scrubs; secti
     assert.match(extractFunction(SCREEN_JS, 'loadPresetByName'), /recordPresetUse\(presetName\)/);
     assert.match(SCREEN_JS, /forgetPresetStats\(name\);\s*renderPresetList\(\);/);
     assert.doesNotMatch(extractFunction(SCREEN_JS, 'loadDefaultPreset'), /recordPresetUse/, 'startup default load is not a use');
-    assert.match(SCREEN_JS, /registerMenuSection\(section\.id, section\.render\)/);
+    assert.match(SCREEN_JS, /registerMenuSection\(section\.id, section\.render, section\)/);
+    assert.match(SCREEN_JS, /id: 'audio-engine-top-tones', render: renderInstMenuTopTones, order: 20/, 'top tones sit below the guitar shift');
     assert.match(SCREEN_JS, /_v3BadgesPendingSections\.push\(section\)/);
 });

@@ -245,7 +245,79 @@
         render();
     }
 
-    window.__liveRetune = { state, set, apply, songTuningSt, followSt, shiftSt };
+    // ── Instrument-menu section ("Shift my guitar") ────────────────────────
+    // The core's v3 guitar dropdown (static/v3/badges.js) takes extra sections via
+    // v3Badges.registerMenuSection. This one drives the same state as the player
+    // bar: pick what the guitar should SOUND as and the engine shifts the signal;
+    // the strings (and the tuner) stay where they are.
+    const escText = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, (c) => (
+        { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+    // What the strings are tuned to (the host's working tuning), as offsets.
+    function guitarOffsets() {
+        const wt = window.feedBack && window.feedBack.workingTuning;
+        let st = null;
+        try { st = wt && typeof wt.get === 'function' ? wt.get() : null; } catch (_) { st = null; }
+        const n = (st && Number(st.stringCount)) || 6;
+        const off = st && Array.isArray(st.offsets) ? st.offsets : [];
+        const out = [];
+        for (let i = 0; i < n; i++) out.push(Number.isFinite(Number(off[i])) ? Number(off[i]) : 0);
+        return out;
+    }
+    // Name of the guitar's tuning moved by `st` semitones, e.g. E Standard -2 -> "D Standard".
+    function shiftedTuningName(offsets, st) {
+        const moved = offsets.map((o) => o + st);
+        const nameFor = window.displayTuningName || (window.feedBack && window.feedBack.displayTuningName);
+        const name = typeof nameFor === 'function' ? nameFor(null, moved) : '';
+        if (name && name !== 'Custom Tuning') return name;
+        return st === 0 ? 'No shift' : `${st > 0 ? '+' : ''}${st} st`;
+    }
+    function renderMenuSection(slot, ctx) {
+        const base = guitarOffsets();
+        const cur = state.semitones;
+        const fst = followSt();
+        const pill = (attr, label, active, title) => '<button type="button" ' + attr + ' title="' + escText(title) + '" class="px-2 py-1 rounded-md text-xs ' +
+            (active ? 'bg-fb-primary text-white' : 'bg-gray-800/50 text-fb-textDim hover:text-fb-text') + '">' + escText(label) + '</button>';
+        let opts = '';
+        for (let st = -MAX_ST; st <= MAX_ST; st++) {
+            opts += '<option value="' + st + '"' + (st === cur ? ' selected' : '') + '>' +
+                escText(shiftedTuningName(base, st) + (st ? ` (${st > 0 ? '+' : ''}${st})` : '')) + '</option>';
+        }
+        const status = supported === false ? 'Not supported by this audio engine'
+            : (shiftSt() || state.cents || matchCents())
+                ? 'Sounding as ' + shiftedTuningName(base, shiftSt()) + (state.cents ? ` ${state.cents > 0 ? '+' : ''}${state.cents}c` : '')
+                : 'No shift';
+        slot.innerHTML = '<div class="pt-3 border-t border-fb-border/40 space-y-2">' +
+            '<div><div class="text-[0.625rem] uppercase tracking-wider text-fb-textDim">Shift my guitar</div>' +
+            '<div class="text-xs font-semibold truncate ' + (shiftSt() ? 'text-amber-400' : 'text-fb-text') + '" data-lr-status>' + escText(status) + '</div></div>' +
+            '<div class="flex items-center gap-1">' +
+            pill('data-lr-down', '−', false, 'Down a semitone') +
+            '<select data-lr-sound-as title="Sound as (the strings stay where they are)" class="flex-1 min-w-0 bg-gray-800/50 border border-gray-700 rounded-md px-2 py-1.5 text-xs text-fb-text outline-none focus:border-fb-primary">' + opts + '</select>' +
+            pill('data-lr-up', '+', false, 'Up a semitone') +
+            '</div>' +
+            '<div class="flex flex-wrap gap-1">' +
+            pill('data-lr-follow', 'Follow song' + (state.follow && fst ? ` ${fst > 0 ? '+' : ''}${fst}` : ''), state.follow,
+                'Also shift by the song’s tuning when every string is down (or up) by the same amount, so a guitar in E plays Eb/D songs without retuning.') +
+            (cur || state.cents ? pill('data-lr-zero', 'No shift', false, 'Back to no shift') : '') +
+            '</div></div>';
+        const setAndRefresh = (patch) => { set(patch); ctx.refresh(); };
+        slot.querySelector('[data-lr-sound-as]').addEventListener('change', (e) => setAndRefresh({ semitones: Number(e.target.value) }));
+        slot.querySelector('[data-lr-down]').addEventListener('click', () => setAndRefresh({ semitones: state.semitones - 1 }));
+        slot.querySelector('[data-lr-up]').addEventListener('click', () => setAndRefresh({ semitones: state.semitones + 1 }));
+        slot.querySelector('[data-lr-follow]').addEventListener('click', () => setAndRefresh({ follow: !state.follow }));
+        const zero = slot.querySelector('[data-lr-zero]');
+        if (zero) zero.addEventListener('click', () => setAndRefresh({ semitones: 0, cents: 0 }));
+    }
+    (function registerMenuSection() {
+        const section = { id: 'live-retune-shift', render: renderMenuSection, order: 10 };
+        if (window.v3Badges && typeof window.v3Badges.registerMenuSection === 'function') {
+            window.v3Badges.registerMenuSection(section.id, section.render, section);
+        } else {
+            window._v3BadgesPendingSections = window._v3BadgesPendingSections || [];
+            window._v3BadgesPendingSections.push(section);
+        }
+    })();
+
+    window.__liveRetune = { state, set, apply, songTuningSt, followSt, shiftSt, shiftedTuningName, renderMenuSection };
     window.addEventListener('songcents:change', () => { apply(); render(); });
 
     const bus = window.feedBack || window.slopsmith;

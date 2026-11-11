@@ -2396,9 +2396,9 @@ window.__feedBackDesktopAudioHooks = window.__feedBackDesktopAudioHooks || {};
     // v3Badges.registerMenuSection; queue the section if it hasn't loaded yet.
     // Older cores without the hook just don't show top tones.
     (function registerTopTones() {
-        const section = { id: 'audio-engine-top-tones', render: renderInstMenuTopTones };
+        const section = { id: 'audio-engine-top-tones', render: renderInstMenuTopTones, order: 20 };
         if (window.v3Badges && typeof window.v3Badges.registerMenuSection === 'function') {
-            window.v3Badges.registerMenuSection(section.id, section.render);
+            window.v3Badges.registerMenuSection(section.id, section.render, section);
         } else {
             window._v3BadgesPendingSections = window._v3BadgesPendingSections || [];
             window._v3BadgesPendingSections.push(section);
