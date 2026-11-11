@@ -79,6 +79,7 @@ test('with nothing starred or counted yet, tone history fills the list', () => {
     // Counted loads add on top of history.
     assert.equal(ctx.presetUseScores({ Crunch: 4 }, locks, ta).Crunch, 4);
     assert.deepEqual(Object.keys(ctx.presetUseScores(null, null, null)), []);
+    assert.equal(ctx.presetUseScores({}, {}, { bass: 'Crunch' }).Crunch, undefined, 'the bass-arrangement slot is not a guitar tone');
 });
 
 test('the menu ranks with tone history, not counted loads alone', () => {

@@ -2349,7 +2349,8 @@ window.__feedBackDesktopAudioHooks = window.__feedBackDesktopAudioHooks || {};
         const add = (n, k) => { if (typeof n === 'string' && n) out[n] = (out[n] || 0) + k; };
         for (const [n, c] of Object.entries(uses || {})) add(n, Number(c) || 0);
         for (const n of Object.values(songLocks || {})) add(n, 1);
-        for (const n of Object.values(taTargets || {})) add(n, 1);
+        // The 'bass' slot is the tone for bass arrangements, not a guitar tone.
+        for (const [slot, n] of Object.entries(taTargets || {})) if (slot !== 'bass') add(n, 1);
         return out;
     }
     // The one manual "load this preset now" path (Settings → Load and the
