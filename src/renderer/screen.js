@@ -2341,6 +2341,17 @@ window.__feedBackDesktopAudioHooks = window.__feedBackDesktopAudioHooks || {};
             .sort((a, b) => (Number(uses[b]) - Number(uses[a])) || a.localeCompare(b));
         return out.concat(used).slice(0, limit);
     }
+    /** How much each preset is used: counted loads, plus the choices already on
+     *  record before counting existed (each song's whole-song tone lock, and each
+     *  Tone Automation slot that targets it), so Top tones isn't empty on day one. */
+    function presetUseScores(uses, songLocks, taTargets) {
+        const out = {};
+        const add = (n, k) => { if (typeof n === 'string' && n) out[n] = (out[n] || 0) + k; };
+        for (const [n, c] of Object.entries(uses || {})) add(n, Number(c) || 0);
+        for (const n of Object.values(songLocks || {})) add(n, 1);
+        for (const n of Object.values(taTargets || {})) add(n, 1);
+        return out;
+    }
     // The one manual "load this preset now" path (Settings → Load and the
     // instrument menu's top tones). Snapshots the chain so a failed load rolls back.
     // Runs under the tone chain lock so it can't interleave with a song's chain
@@ -2363,7 +2374,8 @@ window.__feedBackDesktopAudioHooks = window.__feedBackDesktopAudioHooks || {};
     function renderInstMenuTopTones(slot, ctx) {
         const presets = getPresets();
         if (!Object.keys(presets).length) { slot.innerHTML = ''; return; }
-        const names = topTonePresetNames(presets, readPresetStars(), readPresetUses(), TOP_TONES_LIMIT);
+        const scores = presetUseScores(readPresetUses(), readSongToneLocks(), (readTaStore() || {}).targets);
+        const names = topTonePresetNames(presets, readPresetStars(), scores, TOP_TONES_LIMIT);
         const stars = readPresetStars();
         const head = '<div class="text-[0.625rem] uppercase tracking-wider text-fb-textDim mb-1">Top tones</div>';
         if (!names.length) {

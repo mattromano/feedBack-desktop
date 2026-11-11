@@ -46,8 +46,8 @@ function harness(presets, { loadOk = true, transitioning = false } = {}) {
         "const PRESET_USES_KEY = 'slopsmith-preset-use-counts';",
         ...['readPresetStars', 'writePresetStars', 'readPresetUses', 'writePresetUses',
             'togglePresetStar', 'recordPresetUse', 'forgetPresetStats', 'topTonePresetNames',
-            'loadPresetManually'].map((n) => extractFunction(SCREEN_JS, n)),
-        'Object.assign(this, { readPresetStars, readPresetUses, togglePresetStar, recordPresetUse, forgetPresetStats, topTonePresetNames, loadPresetManually });',
+            'loadPresetManually', 'presetUseScores'].map((n) => extractFunction(SCREEN_JS, n)),
+        'Object.assign(this, { readPresetStars, readPresetUses, togglePresetStar, recordPresetUse, forgetPresetStats, topTonePresetNames, loadPresetManually, presetUseScores });',
     ].join('\n');
     vm.runInNewContext(code, ctx);
     return { ctx, store, loads };
@@ -66,6 +66,24 @@ test('drops deleted presets, unused ones, and respects the limit', () => {
     const { ctx } = harness(PRESETS);
     assert.deepEqual(arr(ctx.topTonePresetNames(PRESETS, ['Gone'], { Gone: 5, Clean: 0, Crunch: 1 }, 5)), ['Crunch']);
     assert.deepEqual(arr(ctx.topTonePresetNames(PRESETS, [], { Clean: 1, Crunch: 1, 'Main Lead': 1 }, 2)), ['Clean', 'Crunch'], 'ties sort by name');
+});
+
+test('with nothing starred or counted yet, tone history fills the list', () => {
+    const { ctx } = harness(PRESETS);
+    // Fresh install of the feature: no stars, no counts — but songs already have
+    // whole-song tone locks and Tone Automation targets presets.
+    const locks = { 'song-a': 'Black Parade Lead', 'song-b': 'Black Parade Lead', 'song-c': 'Main Lead' };
+    const ta = { od: 'Main Lead', dist: 'Main Lead', clean: 'Clean' };
+    const scores = ctx.presetUseScores({}, locks, ta);
+    assert.deepEqual(arr(ctx.topTonePresetNames(PRESETS, [], scores, 5)), ['Main Lead', 'Black Parade Lead', 'Clean']);
+    // Counted loads add on top of history.
+    assert.equal(ctx.presetUseScores({ Crunch: 4 }, locks, ta).Crunch, 4);
+    assert.deepEqual(Object.keys(ctx.presetUseScores(null, null, null)), []);
+});
+
+test('the menu ranks with tone history, not counted loads alone', () => {
+    assert.match(extractFunction(SCREEN_JS, 'renderInstMenuTopTones'),
+        /presetUseScores\(readPresetUses\(\), readSongToneLocks\(\), \(readTaStore\(\) \|\| \{\}\)\.targets\)/);
 });
 
 test('star toggles on and off', () => {
