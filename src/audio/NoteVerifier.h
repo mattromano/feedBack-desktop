@@ -169,10 +169,16 @@ private:
 
     // Spectral-flux onset detection — worker-thread only. `readCursor` is the
     // monotonic input-ring index consumed so far; `onsetLog` holds recent pick
-    // attacks tagged in song time, claimed one-per-note at finalization.
+    // attacks tagged in song time, claimed one-per-note at finalization (the
+    // strings of a palm-muted chord share theirs: VerdictRules.h).
     OnsetDetector onsetDetector;
     uint64_t readCursor = 0;
-    struct LoggedOnset { double songTime = 0.0; bool claimed = false; };
+    struct LoggedOnset
+    {
+        double songTime = 0.0;
+        bool claimed = false;
+        double claimedFor = 0.0;   // chart time of the note that claimed it
+    };
     std::deque<LoggedOnset> onsetLog;
     // setChart() (N-API thread) sets this; run() clears the stale onset log on
     // the next tick. The log itself stays worker-thread only.

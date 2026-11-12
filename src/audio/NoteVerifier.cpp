@@ -393,6 +393,8 @@ void NoteVerifier::run()
             pn.pitchHit = hit;
             pn.palmMuted = cn.pm;
             pn.legato = cn.ho || cn.po;
+            if (slopsmith::palmMuteCountsOnAttack(pn.pitchHit, pn.palmMuted, pn.legato))
+                slopsmith::neighbourTimes(chart.notes, idx, pn.prevT, pn.nextT);
             passIdx.push_back(idx);
             passNotes.push_back(pn);
         }

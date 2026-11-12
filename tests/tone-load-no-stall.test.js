@@ -54,6 +54,8 @@ test('a palm-muted note the comb missed counts on its pick attack', () => {
     const cpp = read('src/audio/NoteVerifier.cpp');
     // The pass's decision lives in VerdictRules.h (tested in engine_units).
     assert.match(cpp, /pn\.palmMuted = cn\.pm;/);
+    // An attack-only note only takes an attack nearer it than its neighbours.
+    assert.match(cpp, /slopsmith::neighbourTimes\(chart\.notes, idx, pn\.prevT, pn\.nextT\);/);
     assert.match(cpp, /const auto verdicts = slopsmith::finalizePass\(passNotes, onsetLog, tol\);/);
     assert.match(cpp, /if \(verdicts\[j\]\.detected\)/);
     assert.match(read('src/audio/addon/DeviceBindings.cpp'), /n\.pm = truthy\("pm"\);/);
