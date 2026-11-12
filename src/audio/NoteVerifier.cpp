@@ -1,5 +1,6 @@
 #include "NoteVerifier.h"
 #include "InputRingReader.h"
+#include "engine/VerdictRules.h"
 
 #include <algorithm>
 #include <cmath>
@@ -366,6 +367,8 @@ void NoteVerifier::run()
         }
 
         const double tol = ctx.timingTolerance;
+        std::vector<size_t> passIdx;
+        std::vector<slopsmith::PassNote> passNotes;
         for (size_t idx : passedIdx)
         {
             if (idx >= state.size() || state[idx].finalized) continue;
@@ -385,34 +388,41 @@ void NoteVerifier::run()
                    && (double) st.presentFrames
                           >= std::ceil((double) ctx.presenceRatio * (double) st.scoredFrames));
 
-            if (hit)
+            slopsmith::PassNote pn;
+            pn.t = cn.t;
+            pn.pitchHit = hit;
+            pn.palmMuted = cn.pm;
+            pn.legato = cn.ho || cn.po;
+            if (slopsmith::palmMuteCountsOnAttack(pn.pitchHit, pn.palmMuted, pn.legato))
+                slopsmith::neighbourTimes(chart.notes, idx, pn.prevT, pn.nextT);
+            passIdx.push_back(idx);
+            passNotes.push_back(pn);
+        }
+
+        // Which notes hit, and which pick attack each claims (VerdictRules.h).
+        const auto verdicts = slopsmith::finalizePass(passNotes, onsetLog, tol);
+
+        for (size_t j = 0; j < passIdx.size(); ++j)
+        {
+            NoteState& st = state[passIdx[j]];
+            const auto& cn = chart.notes[passIdx[j]];
+            const int attack = verdicts[j].attack;
+
+            if (verdicts[j].detected)
             {
-                // The comb confirmed this note's pitch in its window — a hit.
-                // Timing: a picked note claims the nearest unclaimed pick
-                // attack from the onset log; legato (hammer-on / pull-off) has
-                // no attack, so it is reported on-time.
+                // The comb confirmed this note's pitch in its window (or it is
+                // a palm-muted note that was picked in it) — a hit. Timing: the
+                // claimed pick attack; a note with none is reported on-time.
                 st.detected = true;
                 st.centsError = st.bestCents;
                 st.snr = st.bestSnr;
 
                 double when = cn.t;
                 bool timed = false;
-                if (! cn.ho && ! cn.po)
+                if (attack >= 0)
                 {
-                    int best = -1;
-                    double bestDist = tol;
-                    for (size_t k = 0; k < onsetLog.size(); ++k)
-                    {
-                        if (onsetLog[k].claimed) continue;
-                        const double d = std::abs(onsetLog[k].songTime - cn.t);
-                        if (d <= bestDist) { bestDist = d; best = (int) k; }
-                    }
-                    if (best >= 0)
-                    {
-                        onsetLog[(size_t) best].claimed = true;
-                        when = onsetLog[(size_t) best].songTime;
-                        timed = true;
-                    }
+                    when = onsetLog[(size_t) attack].songTime;
+                    timed = true;
                 }
                 st.detectedSongTime = when;
 
