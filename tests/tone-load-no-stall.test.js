@@ -43,9 +43,16 @@ test('the NAM audio path never blocks on the model lock', () => {
 test('verdicts carry `timed`, true only when a pick attack was claimed', () => {
     assert.match(read('src/audio/NoteVerifier.h'), /bool timed = false;/);
     const cpp = read('src/audio/NoteVerifier.cpp');
-    assert.match(cpp, /when = onsetLog\[\(size_t\) best\]\.songTime;\s*timed = true;/);
+    assert.match(cpp, /when = onsetLog\[\(size_t\) attack\]\.songTime;\s*timed = true;/);
     assert.match(cpp, /v\.timed = timed;/);
     const bindings = read('src/audio/addon/DeviceBindings.cpp');
     assert.equal((bindings.match(/entry\.Set\("timed", v\.timed\);/g) || []).length, 2,
         'both getNoteVerdicts and getSourceNoteVerdicts expose it');
+});
+
+test('a palm-muted note the comb missed counts on its pick attack', () => {
+    const cpp = read('src/audio/NoteVerifier.cpp');
+    assert.match(cpp, /const int attack = legato \? -1 : slopsmith::nearestUnclaimedOnset\(onsetLog, cn\.t, tol\);/);
+    assert.match(cpp, /const bool onAttack = slopsmith::palmMuteHitOnAttack\(hit, cn\.pm, legato, attack >= 0\);\s*\n\s*if \(hit \|\| onAttack\)/);
+    assert.match(read('src/audio/addon/DeviceBindings.cpp'), /n\.pm = truthy\("pm"\);/);
 });

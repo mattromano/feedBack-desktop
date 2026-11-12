@@ -1,5 +1,6 @@
 #include "NoteVerifier.h"
 #include "InputRingReader.h"
+#include "engine/VerdictRules.h"
 
 #include <algorithm>
 #include <cmath>
@@ -385,34 +386,29 @@ void NoteVerifier::run()
                    && (double) st.presentFrames
                           >= std::ceil((double) ctx.presenceRatio * (double) st.scoredFrames));
 
-            if (hit)
+            // A picked note's attack: the nearest unclaimed one in the onset
+            // log. Legato (hammer-on / pull-off) has no attack.
+            const bool legato = cn.ho || cn.po;
+            const int attack = legato ? -1 : slopsmith::nearestUnclaimedOnset(onsetLog, cn.t, tol);
+            // A palm-muted note the comb couldn't hear counts on its attack.
+            const bool onAttack = slopsmith::palmMuteHitOnAttack(hit, cn.pm, legato, attack >= 0);
+
+            if (hit || onAttack)
             {
-                // The comb confirmed this note's pitch in its window — a hit.
-                // Timing: a picked note claims the nearest unclaimed pick
-                // attack from the onset log; legato (hammer-on / pull-off) has
-                // no attack, so it is reported on-time.
+                // The comb confirmed this note's pitch in its window (or it is
+                // a palm-muted note that was picked in it) — a hit. Timing: the
+                // claimed pick attack; a note with none is reported on-time.
                 st.detected = true;
                 st.centsError = st.bestCents;
                 st.snr = st.bestSnr;
 
                 double when = cn.t;
                 bool timed = false;
-                if (! cn.ho && ! cn.po)
+                if (attack >= 0)
                 {
-                    int best = -1;
-                    double bestDist = tol;
-                    for (size_t k = 0; k < onsetLog.size(); ++k)
-                    {
-                        if (onsetLog[k].claimed) continue;
-                        const double d = std::abs(onsetLog[k].songTime - cn.t);
-                        if (d <= bestDist) { bestDist = d; best = (int) k; }
-                    }
-                    if (best >= 0)
-                    {
-                        onsetLog[(size_t) best].claimed = true;
-                        when = onsetLog[(size_t) best].songTime;
-                        timed = true;
-                    }
+                    onsetLog[(size_t) attack].claimed = true;
+                    when = onsetLog[(size_t) attack].songTime;
+                    timed = true;
                 }
                 st.detectedSongTime = when;
 

@@ -32,3 +32,7 @@ add_test(NAME ring_residency_trim COMMAND ring_residency_trim_test)
 add_executable(playhead_model_test playhead_model_test.cpp)
 target_compile_features(playhead_model_test PRIVATE cxx_std_17)
 add_test(NAME playhead_model COMMAND playhead_model_test)
+
+add_executable(verdict_rules_test verdict_rules_test.cpp)
+target_compile_features(verdict_rules_test PRIVATE cxx_std_17)
+add_test(NAME verdict_rules COMMAND verdict_rules_test)

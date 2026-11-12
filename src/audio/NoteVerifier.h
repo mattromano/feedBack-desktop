@@ -57,6 +57,7 @@ public:
         int fret = 0;
         double sus = 0.0;   // sustain length (seconds)
         bool ho = false, po = false, b = false, sl = false, hm = false;
+        bool pm = false;    // palm-muted: counts on its pick attack (VerdictRules.h)
     };
 
     // Chart context — the per-song scoring parameters. Mirrors the fields the
