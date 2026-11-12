@@ -1718,7 +1718,9 @@ window.__feedBackDesktopAudioHooks = window.__feedBackDesktopAudioHooks || {};
             );
         });
 
-        applyDeviceBtn.addEventListener('click', async () => {
+        applyDeviceBtn.addEventListener('click', () => applyDeviceForm());
+
+        async function applyDeviceForm() {
             statusText.textContent = 'Configuring device...';
             if (audioRunning) {
                 await api.stopAudio();
@@ -1765,7 +1767,7 @@ window.__feedBackDesktopAudioHooks = window.__feedBackDesktopAudioHooks || {};
                     : 'Failed to configure device';
                 statusDot.className = 'w-3 h-3 rounded-full bg-red-500';
             }
-        });
+        }
 
         // Input channel
         inputChannelSelect.addEventListener('change', async () => {
