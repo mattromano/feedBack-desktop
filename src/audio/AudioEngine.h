@@ -275,7 +275,6 @@ public:
     // reopen) and is re-resolved against the new channel list on every
     // device start. Returns how many of the names match an open channel.
     int setMutedOutputChannels(const juce::StringArray& names);
-    juce::StringArray getMutedOutputChannels() const;
 
     // ── Renderer-audio bus (Phase 2: WebAudio master → engine output) ─────────
     // The renderer pushes its WebAudio master mix here (via IPC) so song/stem

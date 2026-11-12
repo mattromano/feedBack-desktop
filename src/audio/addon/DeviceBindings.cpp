@@ -440,20 +440,6 @@ Napi::Value SetMutedOutputChannels(const Napi::CallbackInfo& info)
     return Napi::Number::New(env, liveEngine->setMutedOutputChannels(names));
 }
 
-// getMutedOutputChannels() -> string[]
-Napi::Value GetMutedOutputChannels(const Napi::CallbackInfo& info)
-{
-    auto env = info.Env();
-    auto out = Napi::Array::New(env);
-    auto liveEngine = snapshotEngine();
-    if (!liveEngine)
-        return out;
-    const auto names = liveEngine->getMutedOutputChannels();
-    for (int i = 0; i < names.size(); ++i)
-        out.Set((uint32_t) i, names[i].toStdString());
-    return out;
-}
-
 // setRendererBus(enabled:boolean, gain:number)
 Napi::Value SetRendererBus(const Napi::CallbackInfo& info)
 {

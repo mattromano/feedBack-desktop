@@ -21,7 +21,6 @@
   "getLevels",
   "getLivePitch",
   "getMonitorMuteState",
-  "getMutedOutputChannels",
   "getNoteVerdicts",
   "getParameters",
   "getPitchDetection",

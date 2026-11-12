@@ -1480,12 +1480,6 @@ int AudioEngine::setMutedOutputChannels(const juce::StringArray& names)
     return recomputeMutedOutputMaskLocked();
 }
 
-juce::StringArray AudioEngine::getMutedOutputChannels() const
-{
-    const juce::ScopedLock sl(outputMuteLock);
-    return mutedOutputNames;
-}
-
 // ── Renderer-audio bus (Phase 2: WebAudio master → engine output) ────────────
 
 bool AudioEngine::pushRendererAudio(const float* interleavedLR, int frames, double sourceRate)

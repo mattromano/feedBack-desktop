@@ -155,7 +155,8 @@ test('multi-output: addon reads multiOutput from the setDevice payload and expor
     assert.match(bind, /cfg\.multiOutput = obj\.Has\("multiOutput"\)/);
     const addon = read('src/audio/NodeAddon.cpp');
     assert.match(addon, /exports\.Set\("setMutedOutputChannels"/);
-    assert.match(addon, /exports\.Set\("getMutedOutputChannels"/);
+    // Main is the source of truth for the mutes: no getter on the addon.
+    assert.doesNotMatch(addon, /getMutedOutputChannels/);
     const engine = read('src/audio/AudioEngine.cpp');
     assert.match(engine, /deviceSetup\.applyDuplex\([^;]*config\.multiOutput\);/);
 });

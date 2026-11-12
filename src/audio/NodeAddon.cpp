@@ -130,7 +130,6 @@ using slopsmith::addon::SetSourceVerifierOffset;
 using slopsmith::addon::SetStreamBus;
 using slopsmith::addon::SetStreamBusGain;
 using slopsmith::addon::SetMutedOutputChannels;
-using slopsmith::addon::GetMutedOutputChannels;
 using slopsmith::addon::SetStreamOutputDevice;
 using slopsmith::addon::SetTonePolish;
 using slopsmith::addon::SetLivePitch;
@@ -348,7 +347,6 @@ static Napi::Object InitModule(Napi::Env env, Napi::Object exports)
     exports.Set("setDevice", Napi::Function::New(env, SetDevice));
     exports.Set("getDeviceMetrics", Napi::Function::New(env, GetDeviceMetrics));
     exports.Set("setMutedOutputChannels", Napi::Function::New(env, SetMutedOutputChannels));
-    exports.Set("getMutedOutputChannels", Napi::Function::New(env, GetMutedOutputChannels));
 
     // Audio control
     exports.Set("startAudio", Napi::Function::New(env, StartAudio));
