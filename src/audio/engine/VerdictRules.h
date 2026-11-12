@@ -3,6 +3,7 @@
 // kept JUCE-free so tests/engine_units can test them directly.
 
 #include <cmath>
+#include <cstddef>
 
 namespace slopsmith {
 
@@ -13,7 +14,7 @@ int nearestUnclaimedOnset(const Log& log, double t, double tol)
 {
     int best = -1;
     double bestDist = tol;
-    for (size_t k = 0; k < log.size(); ++k)
+    for (std::size_t k = 0; k < log.size(); ++k)
     {
         if (log[k].claimed) continue;
         const double d = std::abs(log[k].songTime - t);
