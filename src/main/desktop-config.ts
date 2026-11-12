@@ -1,8 +1,8 @@
 // Desktop config — the main process's own settings file,
 // <userData>/slopsmith-desktop.json (soundfont quality, LAN access, window
-// geometry, fullscreen, pane pop-out windows, multi-output audio). Read by main.ts, pane-hosts.ts,
-// python.ts and soundfont-manager.ts. Moved out of soundfont-manager.ts
-// unchanged (untangler I-002).
+// geometry, fullscreen, pane pop-out windows, multi-output audio). Read by
+// main.ts, pane-hosts.ts, python.ts, soundfont-manager.ts and audio-bridge.ts.
+// Moved out of soundfont-manager.ts unchanged (untangler I-002).
 
 import { app } from 'electron';
 import * as fs from 'fs';
@@ -40,9 +40,11 @@ export interface DesktopConfig {
     // every setDevice; toggling it reopens the device.
     multiOutput?: boolean;
     // Output channel names (as the device advertises them) silenced while
-    // multiOutput is on. Keyed by name, not index, because ASIO4ALL reorders
-    // channels when devices are ticked in its panel. Applied live (no reopen).
-    mutedOutputChannels?: string[];
+    // multiOutput is on, per output device ("<outputType>|<outputDevice>").
+    // Keyed by name, not index, because ASIO4ALL reorders channels when
+    // devices are ticked in its panel; per device because some backends name
+    // channels generically ("Output channel 1"). Applied live (no reopen).
+    mutedOutputChannelsByDevice?: Record<string, string[]>;
 }
 
 export interface SavedPaneWindow {

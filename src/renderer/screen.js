@@ -835,8 +835,21 @@ window.__feedBackDesktopAudioHooks = window.__feedBackDesktopAudioHooks || {};
         return pairs;
     }
 
+    // The output device the mute list belongs to: the same outputType /
+    // outputDevice values the Apply flow sends to setDevice.
+    function currentOutputDeviceRef() {
+        return {
+            outputType: outputDeviceTypeSelect?.value || deviceTypeSelect.value,
+            outputDevice: outputDeviceSelect.value,
+        };
+    }
+
     function renderOutputPairs(names) {
-        if (names !== undefined) lastProbedOutputChannels = Array.isArray(names) ? names.map(String) : [];
+        if (names !== undefined) {
+            lastProbedOutputChannels = Array.isArray(names) ? names.map(String) : [];
+            // A new probe can mean a different output device: show its mutes.
+            loadMultiOutputState();
+        }
         if (!outputPairsEl) return;
         const on = multiOutputState.enabled === true;
         if (multiOutputCheckbox) multiOutputCheckbox.checked = on;
@@ -862,18 +875,31 @@ window.__feedBackDesktopAudioHooks = window.__feedBackDesktopAudioHooks || {};
         }
     }
 
-    async function setOutputPairPlaying(pair, playing) {
+    // Saves run one at a time, in click order, and each click builds on the
+    // state the previous one left (updated before the await), so two quick
+    // clicks can't overwrite each other.
+    let outputMuteSaves = Promise.resolve();
+    function setOutputPairPlaying(pair, playing) {
         const muted = new Set(multiOutputState.mutedOutputChannels || []);
         for (const ch of pair.channels) {
             if (playing) muted.delete(ch); else muted.add(ch);
         }
-        try {
-            const saved = await api.setMutedOutputChannels([...muted]);
-            if (Array.isArray(saved)) multiOutputState.mutedOutputChannels = saved;
-        } catch (e) {
-            console.warn('[audio-engine] setMutedOutputChannels failed:', e);
-        }
-        renderOutputPairs();
+        const next = [...muted];
+        multiOutputState.mutedOutputChannels = next;
+        const device = currentOutputDeviceRef();
+        outputMuteSaves = outputMuteSaves.then(async () => {
+            try {
+                const saved = await api.setMutedOutputChannels(next, device);
+                // Adopt main's sanitised list unless a newer click superseded it.
+                if (Array.isArray(saved) && multiOutputState.mutedOutputChannels === next) {
+                    multiOutputState.mutedOutputChannels = saved.map(String);
+                }
+            } catch (e) {
+                console.warn('[audio-engine] setMutedOutputChannels failed:', e);
+            }
+            renderOutputPairs();
+        });
+        return outputMuteSaves;
     }
 
     async function loadMultiOutputState() {
@@ -882,7 +908,7 @@ window.__feedBackDesktopAudioHooks = window.__feedBackDesktopAudioHooks || {};
             return;
         }
         try {
-            const s = await api.getMultiOutput();
+            const s = await api.getMultiOutput(currentOutputDeviceRef());
             if (s && typeof s === 'object') {
                 multiOutputState = {
                     enabled: s.enabled === true,

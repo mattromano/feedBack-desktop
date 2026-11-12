@@ -63,6 +63,10 @@ export interface DeviceConfig {
     bufferSize: number;
 }
 
+// Output device a multi-output mute list belongs to (same values as the
+// setDevice payload's outputType / outputDevice).
+type OutputDeviceRef = { outputType: string; outputDevice: string };
+
 // setDevice result. `duplex` reports the resolved mode (the engine may pick
 // duplex even when the renderer sent type-mismatched devices, e.g. when the
 // user lands on the same driver via different UI dropdowns). On failure
@@ -246,13 +250,14 @@ const feedBackDesktopApi = {
             },
         getDeviceMetrics: () => ipcRenderer.invoke('audio:getDeviceMetrics'),
         // "Play on multiple outputs": the switch reopens the device (call
-        // setDevice again after it); mutes are output channel names, live.
-        getMultiOutput: (): Promise<{ enabled: boolean; mutedOutputChannels: string[] }> =>
-            ipcRenderer.invoke('audio:getMultiOutput'),
+        // setDevice again after it); mutes are output channel names, saved per
+        // output device and applied live to the device open with every output.
+        getMultiOutput: (device?: OutputDeviceRef): Promise<{ enabled: boolean; mutedOutputChannels: string[] }> =>
+            ipcRenderer.invoke('audio:getMultiOutput', device),
         setMultiOutput: (enabled: boolean): Promise<boolean> =>
             ipcRenderer.invoke('audio:setMultiOutput', enabled),
-        setMutedOutputChannels: (names: string[]): Promise<string[]> =>
-            ipcRenderer.invoke('audio:setMutedOutputChannels', names),
+        setMutedOutputChannels: (names: string[], device: OutputDeviceRef): Promise<string[]> =>
+            ipcRenderer.invoke('audio:setMutedOutputChannels', names, device),
         loadDeviceSettings: () => ipcRenderer.invoke('audio:loadDeviceSettings'),
         saveDeviceSettings: (settings: unknown) => ipcRenderer.invoke('audio:saveDeviceSettings', settings),
 
