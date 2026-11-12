@@ -150,6 +150,7 @@ export interface ChartNote {
     b?: boolean;       // bend
     sl?: boolean;      // slide
     hm?: boolean;      // harmonic
+    pm?: boolean;      // palm-muted: counts on its pick attack
 }
 // The full song chart + scoring context, pushed once per arrangement load.
 export interface ChartUpdate {

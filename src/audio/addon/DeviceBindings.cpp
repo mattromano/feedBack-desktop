@@ -763,7 +763,7 @@ Napi::Value GetSourceNoteVerdicts(const Napi::CallbackInfo& info)
 //                                   //  bass, <=0 disables (default 0.20)
 //   timingTolerance?: number,       // seconds, default 0.1
 //   notes: [{ id:string, t:number, s:number, f:number, sus:number,
-//             ho?,po?,b?,sl?,hm?:boolean }, ...]
+//             ho?,po?,b?,sl?,hm?,pm?:boolean }, ...]
 // }
 // Returns true when the chart was accepted, false on a malformed payload or
 // when no engine exists.
@@ -875,6 +875,7 @@ Napi::Value setChartCore(Napi::Env env, Napi::Object reqObj, SourceChain* target
         n.b  = truthy("b");
         n.sl = truthy("sl");
         n.hm = truthy("hm");
+        n.pm = truthy("pm");
         chart.notes.push_back(std::move(n));
     }
 
