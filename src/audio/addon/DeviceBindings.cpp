@@ -312,6 +312,9 @@ Napi::Value SetDevice(const Napi::CallbackInfo& info)
             else
                 cfg.bufferSize = 256;
         }
+        // "Play on multiple outputs" (main injects it from desktop-config).
+        cfg.multiOutput = obj.Has("multiOutput") && obj.Get("multiOutput").IsBoolean()
+                          && obj.Get("multiOutput").As<Napi::Boolean>().Value();
     }
     else
     {
@@ -413,6 +416,28 @@ Napi::Value SetStreamBusGain(const Napi::CallbackInfo& info)
     if (liveEngine && info.Length() >= 1 && info[0].IsNumber())
         liveEngine->setStreamBusGain((float) info[0].As<Napi::Number>().DoubleValue());
     return info.Env().Undefined();
+}
+
+// setMutedOutputChannels(names:string[]) -> number
+// "Play on multiple outputs" live mute: output channel names (as advertised by
+// probeDeviceOptions().outputChannels) to silence. Applies without reopening
+// the device. Returns how many names match a channel of the open device, or
+// -1 when the engine is down / args are malformed.
+Napi::Value SetMutedOutputChannels(const Napi::CallbackInfo& info)
+{
+    auto env = info.Env();
+    auto liveEngine = snapshotEngine();
+    if (!liveEngine || info.Length() < 1 || !info[0].IsArray())
+        return Napi::Number::New(env, -1);
+    auto arr = info[0].As<Napi::Array>();
+    juce::StringArray names;
+    for (uint32_t i = 0; i < arr.Length(); ++i)
+    {
+        Napi::Value v = arr.Get(i);
+        if (v.IsString())
+            names.addIfNotAlreadyThere(juce::String::fromUTF8(v.As<Napi::String>().Utf8Value().c_str()));
+    }
+    return Napi::Number::New(env, liveEngine->setMutedOutputChannels(names));
 }
 
 // setRendererBus(enabled:boolean, gain:number)

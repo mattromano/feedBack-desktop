@@ -9,6 +9,7 @@ import { app } from 'electron';
 import { isDebugEnabled, getDebugLogPath } from './debug-log';
 import { initVstCrashGuard, armSentinel, disarmSentinel, armEditorSentinel, getSentinelPath } from './vst-crash-guard';
 import { createAudioEffectsExecutor } from './audio-effects-executor';
+import { getDesktopConfig, setDesktopConfig } from './desktop-config';
 
 type AudioModule = Record<string, (...args: any[]) => any>;
 
@@ -152,6 +153,7 @@ type DeviceConfigPayload = {
     outputDevice: string;
     sampleRate: number;
     bufferSize: number;
+    multiOutput: boolean;
 };
 
 function normalizeDeviceConfigPayload(payload: unknown): DeviceConfigPayload {
@@ -166,8 +168,118 @@ function normalizeDeviceConfigPayload(payload: unknown): DeviceConfigPayload {
         outputDevice: String(record.outputDevice ?? record.output ?? ''),
         sampleRate: Number.isFinite(sampleRate) && sampleRate > 0 ? sampleRate : 48000,
         bufferSize: Number.isFinite(bufferSize) && bufferSize > 0 ? bufferSize : 256,
+        multiOutput: record.multiOutput === true,
     };
 }
+
+// ── "Play on multiple outputs" ──────────────────────────────────────────────
+// The setting lives in desktop-config (main owns it, not the renderer's
+// device settings), so every setDevice caller gets it without passing it.
+
+function multiOutputEnabled(): boolean {
+    return getDesktopConfig().multiOutput === true;
+}
+
+function sanitizeOutputChannelNames(value: unknown): string[] {
+    if (!Array.isArray(value)) return [];
+    const out: string[] = [];
+    for (const v of value) {
+        if (typeof v !== 'string') continue;
+        const name = v.trim();
+        if (name && name.length <= 256 && !out.includes(name)) out.push(name);
+        if (out.length >= 64) break;
+    }
+    return out;
+}
+
+// Mutes are saved per output device: backends such as WASAPI name channels
+// generically ("Output channel 1"), so a bare name would follow the user onto
+// a different device.
+function outputDeviceKey(outputType: unknown, outputDevice: unknown): string {
+    return `${String(outputType ?? '')}|${String(outputDevice ?? '')}`;
+}
+
+function outputDeviceKeyFrom(device: unknown): string | null {
+    const record = asRecord(device);
+    if (!record) return null;
+    return outputDeviceKey(record.outputType, record.outputDevice);
+}
+
+function savedOutputMutes(key: string | null): string[] {
+    if (key === null) return [];
+    const byDevice = asRecord(getDesktopConfig().mutedOutputChannelsByDevice);
+    return byDevice ? sanitizeOutputChannelNames(byDevice[key]) : [];
+}
+
+// The output device the engine has open with EVERY output channel (the last
+// successful multi-output setDevice), or null. Mutes reach the engine only
+// for it: with just the first pair open, a saved mute on that pair would
+// silence the app.
+let multiOutputOpenKey: string | null = null;
+
+function pushOutputMutes(): void {
+    callAddon('setMutedOutputChannels', -1, savedOutputMutes(multiOutputOpenKey));
+}
+
+// Record what the last setDevice opened and push that device's saved mutes
+// (or clear them). No addon call while multi-output was and stays off.
+function noteOutputDeviceOpened(key: string | null): void {
+    const wasOpen = multiOutputOpenKey !== null;
+    multiOutputOpenKey = key;
+    if (wasOpen || key !== null) pushOutputMutes();
+}
+
+// One setDevice call with an object payload, falling back to the legacy
+// positional call when the addon rejects the object form (same backend only).
+// `multiOutput` says whether every output was requested: the legacy call
+// can't carry it.
+function openDeviceObject(normalizedPayload: DeviceConfigPayload): {
+    result: DeviceConfigOutcome;
+    multiOutput: boolean;
+} {
+    try {
+        return {
+            result: normalizeDeviceConfigResult(audio!.setDevice(normalizedPayload)),
+            multiOutput: normalizedPayload.multiOutput,
+        };
+    } catch (e: unknown) {
+        const objectError = e instanceof Error ? e.message : String(e);
+        console.warn(`[audio] setDevice object call threw: ${objectError}; retrying legacy device call`);
+        if (normalizedPayload.inputType !== normalizedPayload.outputType) {
+            return { result: normalizeDeviceConfigResult(false, objectError), multiOutput: false };
+        }
+        if (normalizedPayload.multiOutput) {
+            console.warn('[audio] legacy setDevice fallback cannot carry "Play on multiple outputs"; opening the first output pair only');
+        }
+        try {
+            return {
+                result: normalizeDeviceConfigResult(
+                    audio!.setDevice(
+                        normalizedPayload.inputDevice,
+                        normalizedPayload.outputDevice,
+                        normalizedPayload.sampleRate,
+                        normalizedPayload.bufferSize,
+                    ),
+                    objectError,
+                ),
+                multiOutput: false,
+            };
+        } catch (legacyError: unknown) {
+            const error = legacyError instanceof Error ? legacyError.message : String(legacyError);
+            console.warn(`[audio] legacy setDevice fallback threw: ${error}`);
+            return { result: { ok: false, error: error || objectError, duplex: true }, multiOutput: false };
+        }
+    }
+}
+
+type DeviceConfigOutcome = {
+    ok: boolean;
+    error: string;
+    duplex: boolean;
+    sampleRate?: number;
+    inputBlockSize?: number;
+    outputBlockSize?: number;
+};
 
 function normalizeDeviceConfigResult(result: unknown, fallbackError = '') {
     if (typeof result === 'boolean') {
@@ -544,38 +656,77 @@ export function initAudioBridge(): void {
                 if (Number.isFinite(sr) && sr > 0) payload.sampleRate = sr;
                 if (Number.isFinite(bs) && bs > 0) payload.bufferSize = bs;
                 const normalizedPayload = normalizeDeviceConfigPayload(payload);
-                try {
-                    return normalizeDeviceConfigResult(audio.setDevice(normalizedPayload));
-                } catch (e: unknown) {
-                    const objectError = e instanceof Error ? e.message : String(e);
-                    console.warn(`[audio] setDevice object call threw: ${objectError}; retrying legacy device call`);
-                    if (normalizedPayload.inputType !== normalizedPayload.outputType) {
-                        return normalizeDeviceConfigResult(false, objectError);
-                    }
-                    try {
-                        return normalizeDeviceConfigResult(
-                            audio.setDevice(
-                                normalizedPayload.inputDevice,
-                                normalizedPayload.outputDevice,
-                                normalizedPayload.sampleRate,
-                                normalizedPayload.bufferSize,
-                            ),
-                            objectError,
-                        );
-                    } catch (legacyError: unknown) {
-                        const error = legacyError instanceof Error ? legacyError.message : String(legacyError);
-                        console.warn(`[audio] legacy setDevice fallback threw: ${error}`);
-                        return { ok: false, error: error || objectError, duplex: true };
-                    }
+                normalizedPayload.multiOutput = multiOutputEnabled();
+                const key = outputDeviceKey(normalizedPayload.outputType, normalizedPayload.outputDevice);
+                const opened = openDeviceObject(normalizedPayload);
+                if (!opened.result.ok && normalizedPayload.multiOutput) {
+                    // A device that can't open every output fails closed in the
+                    // engine. Fall back to the first pair rather than leave the
+                    // user with no audio (the saved setting stays on).
+                    console.warn(`[audio] multi-output open failed (${opened.result.error}); retrying with the first output pair only`);
+                    const firstPair = openDeviceObject({ ...normalizedPayload, multiOutput: false });
+                    noteOutputDeviceOpened(null);
+                    return firstPair.result.ok
+                        ? { ...firstPair.result, multiOutputFallback: true, multiOutputError: opened.result.error }
+                        : opened.result;
                 }
+                noteOutputDeviceOpened(opened.result.ok && opened.multiOutput ? key : null);
+                return opened.result;
             }
             const [input, output, sampleRate, bufferSize] = args;
-            return normalizeDeviceConfigResult(audio.setDevice(input, output, sampleRate, bufferSize));
+            const positional = normalizeDeviceConfigResult(audio.setDevice(input, output, sampleRate, bufferSize));
+            noteOutputDeviceOpened(null);
+            return positional;
         } catch (e: unknown) {
             const error = e instanceof Error ? e.message : String(e);
             console.warn(`[audio] setDevice threw: ${error}`);
             return { ok: false, error, duplex: true };
         }
+    });
+
+    // "Play on multiple outputs" (desktop-config). get → the setting and the
+    // saved mutes of `device` ({outputType, outputDevice}; default: the device
+    // open with every output). setMultiOutput persists the switch; the
+    // renderer then re-applies the device, and that setDevice pushes the
+    // mutes. setMutedOutputChannels persists `device`'s mutes and applies them
+    // live when that device is the one open with every output.
+    ipcMain.handle('audio:getMultiOutput', (_event, device?: unknown) => {
+        const cfg = getDesktopConfig();
+        return {
+            enabled: cfg.multiOutput === true,
+            mutedOutputChannels: savedOutputMutes(outputDeviceKeyFrom(device) ?? multiOutputOpenKey),
+        };
+    });
+
+    ipcMain.handle('audio:setMultiOutput', (_event, enabled: unknown) => {
+        if (typeof enabled !== 'boolean') return multiOutputEnabled();
+        try {
+            setDesktopConfig({ multiOutput: enabled });
+        } catch (e: unknown) {
+            console.warn(`[audio] saving multiOutput failed: ${e instanceof Error ? e.message : String(e)}`);
+            return multiOutputEnabled();
+        }
+        return enabled;
+    });
+
+    ipcMain.handle('audio:setMutedOutputChannels', (_event, names: unknown, device?: unknown) => {
+        const key = outputDeviceKeyFrom(device);
+        if (!Array.isArray(names) || key === null) return savedOutputMutes(key ?? multiOutputOpenKey);
+        const muted = sanitizeOutputChannelNames(names);
+        try {
+            const byDevice: Record<string, string[]> = {};
+            const saved = asRecord(getDesktopConfig().mutedOutputChannelsByDevice) || {};
+            for (const [k, v] of Object.entries(saved)) {
+                const list = sanitizeOutputChannelNames(v);
+                if (list.length > 0) byDevice[k] = list;
+            }
+            if (muted.length > 0) byDevice[key] = muted; else delete byDevice[key];
+            setDesktopConfig({ mutedOutputChannelsByDevice: byDevice });
+        } catch (e: unknown) {
+            console.warn(`[audio] saving mutedOutputChannels failed: ${e instanceof Error ? e.message : String(e)}`);
+        }
+        if (key === multiOutputOpenKey) pushOutputMutes();
+        return savedOutputMutes(key);
     });
 
     ipcMain.handle('audio:getDeviceMetrics', () => {

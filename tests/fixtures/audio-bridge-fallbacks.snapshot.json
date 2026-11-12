@@ -177,6 +177,14 @@
       },
       "logs": []
     },
+    "audio:getMultiOutput": {
+      "kind": "handle",
+      "ret": {
+        "enabled": false,
+        "mutedOutputChannels": []
+      },
+      "logs": []
+    },
     "audio:getNoteVerdicts": {
       "kind": "handle",
       "ret": null,
@@ -545,6 +553,16 @@
       "ret": false,
       "logs": []
     },
+    "audio:setMultiOutput": {
+      "kind": "handle",
+      "ret": false,
+      "logs": []
+    },
+    "audio:setMutedOutputChannels": {
+      "kind": "handle",
+      "ret": [],
+      "logs": []
+    },
     "audio:setNoiseGate": {
       "kind": "handle",
       "ret": "<undefined>",
@@ -858,6 +876,14 @@
           "[audio] getLivePitch failed: boom:getLivePitch"
         ]
       ]
+    },
+    "audio:getMultiOutput": {
+      "kind": "handle",
+      "ret": {
+        "enabled": false,
+        "mutedOutputChannels": []
+      },
+      "logs": []
     },
     "audio:getNoteVerdicts": {
       "kind": "handle",
@@ -1288,6 +1314,16 @@
       "threw": "boom:setMultiBypass",
       "logs": []
     },
+    "audio:setMultiOutput": {
+      "kind": "handle",
+      "ret": false,
+      "logs": []
+    },
+    "audio:setMutedOutputChannels": {
+      "kind": "handle",
+      "ret": [],
+      "logs": []
+    },
     "audio:setNoiseGate": {
       "kind": "handle",
       "threw": "boom:setNoiseGate",
@@ -1594,6 +1630,14 @@
     "audio:getLivePitch": {
       "kind": "handle",
       "ret": "ret:getLivePitch:0",
+      "logs": []
+    },
+    "audio:getMultiOutput": {
+      "kind": "handle",
+      "ret": {
+        "enabled": false,
+        "mutedOutputChannels": []
+      },
       "logs": []
     },
     "audio:getNoteVerdicts": {
@@ -1933,6 +1977,16 @@
     "audio:setMultiBypass": {
       "kind": "handle",
       "ret": "ret:setMultiBypass:1",
+      "logs": []
+    },
+    "audio:setMultiOutput": {
+      "kind": "handle",
+      "ret": false,
+      "logs": []
+    },
+    "audio:setMutedOutputChannels": {
+      "kind": "handle",
+      "ret": [],
       "logs": []
     },
     "audio:setNoiseGate": {

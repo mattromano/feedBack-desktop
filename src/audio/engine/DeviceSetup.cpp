@@ -285,7 +285,8 @@ DeviceOptions DeviceSetup::probeDual(const juce::String& inputTypeName,
 juce::String DeviceSetup::applyDuplex(const juce::String& inputName,
                                       const juce::String& outputName,
                                       double sampleRate, int bufferSize,
-                                      SourceChain& monitorChain)
+                                      SourceChain& monitorChain,
+                                      bool multiOutput)
 {
     juce::AudioDeviceManager::AudioDeviceSetup setup;
     setup.inputDeviceName = inputName;
@@ -332,7 +333,7 @@ juce::String DeviceSetup::applyDuplex(const juce::String& inputName,
 
             const int advertisedOutputs = currentDevice->getOutputChannelNames().size();
             juce::BigInteger expectedOutputs;
-            expectedOutputs.setRange(0, juce::jmin(advertisedOutputs > 0 ? advertisedOutputs : 2, 2), true);
+            expectedOutputs.setRange(0, outputChannelsToOpen(advertisedOutputs, multiOutput), true);
 
             if (current.inputDeviceName == setup.inputDeviceName
                 && current.outputDeviceName == setup.outputDeviceName
@@ -421,7 +422,7 @@ juce::String DeviceSetup::applyDuplex(const juce::String& inputName,
     if (outputChannelCount <= 0) outputChannelCount = 2;
 
     setup.inputChannels.setRange(0, inputChannelCount, true);
-    setup.outputChannels.setRange(0, juce::jmin(outputChannelCount, 2), true);
+    setup.outputChannels.setRange(0, outputChannelsToOpen(outputChannelCount, multiOutput), true);
 
     juce::String result;
     fprintf(stderr, "[AudioEngine] Duplex reconfigure phase=open begin sr=%.0f bs=%d\n",
@@ -449,8 +450,8 @@ juce::String DeviceSetup::applyDuplex(const juce::String& inputName,
         const double sr = configuredDevice->getCurrentSampleRate();
         const int bs = configuredDevice->getCurrentBufferSizeSamples();
 
-        // For explicitly named endpoints, "all inputs / first two outputs" is
-        // the requested contract. Rebuild those masks from the opened device's
+        // For explicitly named endpoints, "all inputs / first two outputs" (all
+        // outputs with multiOutput) is the requested contract. Rebuild those masks from the opened device's
         // advertised channels so a failed pre-open probe cannot silently
         // collapse an 8-input ASIO interface to the old two-channel fallback.
         juce::BigInteger expectedInputs;
@@ -464,7 +465,7 @@ juce::String DeviceSetup::applyDuplex(const juce::String& inputName,
             expectedOutputs = setup.outputChannels;
         else
             expectedOutputs.setRange(
-                0, juce::jmin(configuredDevice->getOutputChannelNames().size(), 2), true);
+                0, outputChannelsToOpen(configuredDevice->getOutputChannelNames().size(), multiOutput), true);
 
         const auto actualInputs = configuredDevice->getActiveInputChannels();
         const auto actualOutputs = configuredDevice->getActiveOutputChannels();
@@ -707,7 +708,7 @@ DeviceConfigResult DeviceSetup::applySplit(const DeviceConfig& config,
     }
     if (outputChannelCount <= 0) outputChannelCount = 2;
     outSetup.inputChannels.clear();
-    outSetup.outputChannels.setRange(0, juce::jmin(outputChannelCount, 2), true);
+    outSetup.outputChannels.setRange(0, outputChannelsToOpen(outputChannelCount, config.multiOutput), true);
 
     // Same JUCE_LINUX close-before-reconfigure as the input side above — also
     // protects when split mode is re-applied with a different output device.

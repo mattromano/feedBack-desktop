@@ -25,7 +25,7 @@ const ALL = [
     'guitar-input-channel-default', 'heard-clock-wiring', 'input-source-selection-sync',
     'juce-exclusive-type-name', 'library-path-config', 'linux-update-decision',
     'live-pitch', 'live-retune-follow-song', 'midi-chain-preserve', 'ml-note-detection',
-    'monitor-mute-suppression', 'multi-source', 'napi-arg-fuzz',
+    'monitor-mute-suppression', 'multi-output', 'multi-source', 'napi-arg-fuzz',
     'preset-swap-mute', 'renderer-capability-migration', 'renderer-iife-scope',
     'song-tone-lock', 'startup-missing-input', 'test-inventory', 'top-tones', 'live-retune-menu',
     'tone-automation-base-tone', 'tone-load-no-stall', 'tone-switcher-parity',

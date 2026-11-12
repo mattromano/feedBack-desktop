@@ -47,6 +47,10 @@ struct DeviceConfig
     juce::String outputDevice;
     double sampleRate = 48000.0;
     int bufferSize = 256;
+    // "Play on multiple outputs": open EVERY advertised output channel instead
+    // of the first pair. The engine still mixes stereo into 0/1 and fans it
+    // out to the other pairs (OutputFanout.h). Off = historical 2-output mask.
+    bool multiOutput = false;
 };
 
 struct DeviceConfigResult
@@ -84,7 +88,8 @@ public:
     juce::String applyDuplex(const juce::String& inputName,
                              const juce::String& outputName,
                              double sampleRate, int bufferSize,
-                             SourceChain& monitorChain);
+                             SourceChain& monitorChain,
+                             bool multiOutput = false);
 
     // Open input-only + output-only devices at a shared nominal rate. On
     // success stores the achieved format, resets the split ring + counters,
@@ -111,6 +116,16 @@ public:
     // SR preflight, and split open must all check the SAME concrete device).
     static juce::String resolveDeviceName(juce::AudioIODeviceType* t,
                                           bool isInput, const juce::String& name);
+    // How many leading output channels to open for a device advertising
+    // `advertised` outputs: the first pair normally, all of them with
+    // multiOutput. Shared by the duplex skip check, open, verify and the split
+    // open so the four masks can never disagree (a mismatch would either skip
+    // a needed reopen or fail the verify step closed).
+    static int outputChannelsToOpen(int advertised, bool multiOutput)
+    {
+        const int n = advertised > 0 ? advertised : 2;
+        return multiOutput ? n : juce::jmin(n, 2);
+    }
     // Whether `dev` (resolved) supports `sr` within tolerance.
     static bool rateSupportedBy(juce::AudioIODeviceType* t, const juce::String& dev,
                                 bool isInput, double sr);

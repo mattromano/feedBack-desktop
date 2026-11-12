@@ -1,8 +1,8 @@
 // Desktop config — the main process's own settings file,
 // <userData>/slopsmith-desktop.json (soundfont quality, LAN access, window
-// geometry, fullscreen, pane pop-out windows). Read by main.ts, pane-hosts.ts,
-// python.ts and soundfont-manager.ts. Moved out of soundfont-manager.ts
-// unchanged (untangler I-002).
+// geometry, fullscreen, pane pop-out windows, multi-output audio). Read by
+// main.ts, pane-hosts.ts, python.ts, soundfont-manager.ts and audio-bridge.ts.
+// Moved out of soundfont-manager.ts unchanged (untangler I-002).
 
 import { app } from 'electron';
 import * as fs from 'fs';
@@ -33,6 +33,18 @@ export interface DesktopConfig {
     // the renderer's localStorage because localStorage is shared with the pane
     // windows themselves (same origin), and a second writer there would race.
     paneWindows?: Record<string, SavedPaneWindow>;
+    // "Play on multiple outputs": when true the audio engine opens EVERY output
+    // channel of the device (e.g. ASIO4ALL with a headset and the Realtek
+    // speakers both ticked) and plays the stereo mix on each pair, instead of
+    // only the first pair. Opt-in (default off). Read by audio-bridge.ts on
+    // every setDevice; toggling it reopens the device.
+    multiOutput?: boolean;
+    // Output channel names (as the device advertises them) silenced while
+    // multiOutput is on, per output device ("<outputType>|<outputDevice>").
+    // Keyed by name, not index, because ASIO4ALL reorders channels when
+    // devices are ticked in its panel; per device because some backends name
+    // channels generically ("Output channel 1"). Applied live (no reopen).
+    mutedOutputChannelsByDevice?: Record<string, string[]>;
 }
 
 export interface SavedPaneWindow {

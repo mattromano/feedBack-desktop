@@ -87,6 +87,7 @@
   "setMonitorMute",
   "setMonitorMuteSuppressed",
   "setMultiBypass",
+  "setMutedOutputChannels",
   "setNoiseGate",
   "setNoteDetectionEnabled",
   "setOutputDeviceType",

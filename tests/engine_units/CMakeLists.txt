@@ -33,6 +33,10 @@ add_executable(playhead_model_test playhead_model_test.cpp)
 target_compile_features(playhead_model_test PRIVATE cxx_std_17)
 add_test(NAME playhead_model COMMAND playhead_model_test)
 
+add_executable(output_fanout_test output_fanout_test.cpp)
+target_compile_features(output_fanout_test PRIVATE cxx_std_17)
+add_test(NAME output_fanout COMMAND output_fanout_test)
+
 add_executable(verdict_rules_test verdict_rules_test.cpp)
 target_compile_features(verdict_rules_test PRIVATE cxx_std_17)
 add_test(NAME verdict_rules COMMAND verdict_rules_test)

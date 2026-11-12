@@ -104,6 +104,7 @@ Napi::Value SetSourceMonitorMute(const Napi::CallbackInfo& info);
 Napi::Value SetSourceVerifierOffset(const Napi::CallbackInfo& info);
 Napi::Value SetStreamBus(const Napi::CallbackInfo& info);
 Napi::Value SetStreamBusGain(const Napi::CallbackInfo& info);
+Napi::Value SetMutedOutputChannels(const Napi::CallbackInfo& info);
 Napi::Value SetStreamOutputDevice(const Napi::CallbackInfo& info);
 Napi::Value SetTonePolish(const Napi::CallbackInfo& info);
 Napi::Value SetLivePitch(const Napi::CallbackInfo& info);

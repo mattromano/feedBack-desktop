@@ -48,6 +48,9 @@ window.__feedBackDesktopAudioHooks = window.__feedBackDesktopAudioHooks || {};
     const bufferSizeSelect = $('ae-buffer-size');
     const inputChannelSelect = $('ae-input-channel');
     const applyDeviceBtn = $('ae-apply-device');
+    const multiOutputCheckbox = $('ae-multi-output');
+    const outputPairsEl = $('ae-output-pairs');
+    const multiOutputNote = $('ae-multi-output-note');
     const meterInput = $('ae-meter-input');
     const meterOutput = $('ae-meter-output');
     let streamMeterEl = null; // assigned in setupStreaming(); read by the meter poll
@@ -800,7 +803,122 @@ window.__feedBackDesktopAudioHooks = window.__feedBackDesktopAudioHooks || {};
         renderSampleRateOptions(options?.sampleRates, preferred.sampleRate);
         renderBufferSizeOptions(options?.bufferSizes, preferred.bufferSize);
         renderInputChannelOptions(options?.inputChannels, preferred.inputChannel);
+        renderOutputPairs(options?.outputChannels);
         return options;
+    }
+
+    // ── Play on multiple outputs ────────────────────────────────────────────
+    // The switch (desktop-config, via main) makes the engine open every output
+    // of the device and copy the stereo mix to each pair; reopening the device
+    // is required, so toggling it re-runs Apply. Each pair below is a live
+    // play/mute checkbox — mutes are output channel names, applied without a
+    // reopen.
+    let multiOutputState = { enabled: false, mutedOutputChannels: [] };
+    let lastProbedOutputChannels = [];
+
+    // Group advertised output channel names into stereo pairs (0/1, 2/3, ...)
+    // with a readable label: "Speakers (PRO) 1" + "Speakers (PRO) 2" →
+    // "Speakers (PRO) 1/2". A trailing odd channel is its own one-channel pair.
+    function outputChannelPairs(names) {
+        const list = Array.isArray(names) ? names.map(String) : [];
+        const pairs = [];
+        for (let i = 0; i < list.length; i += 2) {
+            const channels = list.slice(i, i + 2);
+            let label = channels.join(' / ');
+            if (channels.length === 2) {
+                const m0 = channels[0].match(/^(.*?)\s*(\d+)$/);
+                const m1 = channels[1].match(/^(.*?)\s*(\d+)$/);
+                if (m0 && m1 && m0[1] === m1[1]) label = `${m0[1]} ${m0[2]}/${m1[2]}`;
+            }
+            pairs.push({ label: label || `Output ${i + 1}`, channels });
+        }
+        return pairs;
+    }
+
+    // The output device the mute list belongs to: the same outputType /
+    // outputDevice values the Apply flow sends to setDevice.
+    function currentOutputDeviceRef() {
+        return {
+            outputType: outputDeviceTypeSelect?.value || deviceTypeSelect.value,
+            outputDevice: outputDeviceSelect.value,
+        };
+    }
+
+    function renderOutputPairs(names) {
+        if (names !== undefined) {
+            lastProbedOutputChannels = Array.isArray(names) ? names.map(String) : [];
+            // A new probe can mean a different output device: show its mutes.
+            loadMultiOutputState();
+        }
+        if (!outputPairsEl) return;
+        const on = multiOutputState.enabled === true;
+        if (multiOutputCheckbox) multiOutputCheckbox.checked = on;
+        multiOutputNote?.classList.toggle('hidden', !on);
+        outputPairsEl.replaceChildren();
+        const pairs = outputChannelPairs(lastProbedOutputChannels);
+        outputPairsEl.classList.toggle('hidden', !on || pairs.length === 0);
+        if (!on) return;
+        const muted = new Set(multiOutputState.mutedOutputChannels || []);
+        for (const pair of pairs) {
+            const row = document.createElement('label');
+            row.className = 'flex items-center gap-2 cursor-pointer';
+            const box = document.createElement('input');
+            box.type = 'checkbox';
+            box.className = 'w-4 h-4 rounded bg-slate-700 border-slate-600 accent-emerald-500';
+            box.checked = !pair.channels.every(ch => muted.has(ch));
+            box.addEventListener('change', () => setOutputPairPlaying(pair, box.checked));
+            const text = document.createElement('span');
+            text.className = 'text-sm text-slate-300';
+            text.textContent = pair.label;
+            row.append(box, text);
+            outputPairsEl.append(row);
+        }
+    }
+
+    // Saves run one at a time, in click order, and each click builds on the
+    // state the previous one left (updated before the await), so two quick
+    // clicks can't overwrite each other.
+    let outputMuteSaves = Promise.resolve();
+    function setOutputPairPlaying(pair, playing) {
+        const muted = new Set(multiOutputState.mutedOutputChannels || []);
+        for (const ch of pair.channels) {
+            if (playing) muted.delete(ch); else muted.add(ch);
+        }
+        const next = [...muted];
+        multiOutputState.mutedOutputChannels = next;
+        const device = currentOutputDeviceRef();
+        outputMuteSaves = outputMuteSaves.then(async () => {
+            try {
+                const saved = await api.setMutedOutputChannels(next, device);
+                // Adopt main's sanitised list unless a newer click superseded it.
+                if (Array.isArray(saved) && multiOutputState.mutedOutputChannels === next) {
+                    multiOutputState.mutedOutputChannels = saved.map(String);
+                }
+            } catch (e) {
+                console.warn('[audio-engine] setMutedOutputChannels failed:', e);
+            }
+            renderOutputPairs();
+        });
+        return outputMuteSaves;
+    }
+
+    async function loadMultiOutputState() {
+        if (!api || typeof api.getMultiOutput !== 'function') {
+            multiOutputCheckbox?.closest('div')?.classList.add('hidden');
+            return;
+        }
+        try {
+            const s = await api.getMultiOutput(currentOutputDeviceRef());
+            if (s && typeof s === 'object') {
+                multiOutputState = {
+                    enabled: s.enabled === true,
+                    mutedOutputChannels: Array.isArray(s.mutedOutputChannels) ? s.mutedOutputChannels.map(String) : [],
+                };
+            }
+        } catch (e) {
+            console.warn('[audio-engine] getMultiOutput failed:', e);
+        }
+        renderOutputPairs();
     }
 
     // ── Noise gate (AmpliTube-style: threshold, release ms, depth dB → native setNoiseGate) ──
@@ -1718,7 +1836,11 @@ window.__feedBackDesktopAudioHooks = window.__feedBackDesktopAudioHooks || {};
             );
         });
 
-        applyDeviceBtn.addEventListener('click', async () => {
+        applyDeviceBtn.addEventListener('click', () => applyDeviceForm());
+
+        // startAudio:false configures the device but leaves audio stopped (a
+        // settings change made while the user had stopped audio).
+        async function applyDeviceForm({ startAudio = true } = {}) {
             statusText.textContent = 'Configuring device...';
             if (audioRunning) {
                 await api.stopAudio();
@@ -1747,13 +1869,22 @@ window.__feedBackDesktopAudioHooks = window.__feedBackDesktopAudioHooks || {};
                 if (Number.isFinite(inputChannel)) await api.setInputChannel(inputChannel);
                 await api.setMonitorMute(monitorMuteCheckbox.checked);
                 await api.setMonitorKill?.(monitorKillCheckbox.checked);
-                await api.startAudio();
-                audioRunning = true;
-                toggleBtn.textContent = 'Stop';
-                statusDot.className = 'w-3 h-3 rounded-full bg-emerald-500';
                 const modeLabel = (typeof result === 'object' && result?.duplex === false)
                     ? ' (split mode)' : '';
-                statusText.textContent = 'Audio running' + modeLabel;
+                // Main fell back to the first output pair: the device can't
+                // open every output with these settings.
+                const fallbackNote = (typeof result === 'object' && result?.multiOutputFallback)
+                    ? ' (couldn\'t open every output; playing on the first pair only)' : '';
+                if (startAudio) {
+                    await api.startAudio();
+                    audioRunning = true;
+                    toggleBtn.textContent = 'Stop';
+                    statusDot.className = 'w-3 h-3 rounded-full bg-emerald-500';
+                    statusText.textContent = 'Audio running' + modeLabel + fallbackNote;
+                } else {
+                    statusDot.className = 'w-3 h-3 rounded-full bg-yellow-500';
+                    statusText.textContent = 'Device configured; audio stopped' + modeLabel + fallbackNote;
+                }
                 aeApplyNoiseGateToEngine();
                 aeApplyTonePolishToEngine();
                 syncSelectedInputSource(inputType, inputDeviceSelect.value);
@@ -1765,7 +1896,29 @@ window.__feedBackDesktopAudioHooks = window.__feedBackDesktopAudioHooks || {};
                     : 'Failed to configure device';
                 statusDot.className = 'w-3 h-3 rounded-full bg-red-500';
             }
+        }
+
+        // Play on multiple outputs: persist, then reopen the device through the
+        // normal Apply flow so the engine opens the new output channel mask.
+        multiOutputCheckbox?.addEventListener('change', async () => {
+            const previous = multiOutputState.enabled === true;
+            let enabled = multiOutputCheckbox.checked;
+            try {
+                enabled = (await api.setMultiOutput(enabled)) === true;
+            } catch (e) {
+                console.warn('[audio-engine] setMultiOutput failed:', e);
+                enabled = previous;
+            }
+            multiOutputState.enabled = enabled;
+            renderOutputPairs();
+            if (enabled === previous) return; // not saved: nothing to reopen
+            if (!isDeviceFormApplied()) {
+                statusText.textContent = 'Apply device settings to use this output setting';
+                return;
+            }
+            await applyDeviceForm({ startAudio: audioRunning });
         });
+        loadMultiOutputState();
 
         // Input channel
         inputChannelSelect.addEventListener('change', async () => {
