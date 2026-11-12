@@ -367,6 +367,8 @@ void NoteVerifier::run()
         }
 
         const double tol = ctx.timingTolerance;
+        std::vector<size_t> passIdx;
+        std::vector<slopsmith::PassNote> passNotes;
         for (size_t idx : passedIdx)
         {
             if (idx >= state.size() || state[idx].finalized) continue;
@@ -386,14 +388,25 @@ void NoteVerifier::run()
                    && (double) st.presentFrames
                           >= std::ceil((double) ctx.presenceRatio * (double) st.scoredFrames));
 
-            // A picked note's attack: the nearest unclaimed one in the onset
-            // log. Legato (hammer-on / pull-off) has no attack.
-            const bool legato = cn.ho || cn.po;
-            const int attack = legato ? -1 : slopsmith::nearestUnclaimedOnset(onsetLog, cn.t, tol);
-            // A palm-muted note the comb couldn't hear counts on its attack.
-            const bool onAttack = slopsmith::palmMuteHitOnAttack(hit, cn.pm, legato, attack >= 0);
+            slopsmith::PassNote pn;
+            pn.t = cn.t;
+            pn.pitchHit = hit;
+            pn.palmMuted = cn.pm;
+            pn.legato = cn.ho || cn.po;
+            passIdx.push_back(idx);
+            passNotes.push_back(pn);
+        }
 
-            if (hit || onAttack)
+        // Which notes hit, and which pick attack each claims (VerdictRules.h).
+        const auto verdicts = slopsmith::finalizePass(passNotes, onsetLog, tol);
+
+        for (size_t j = 0; j < passIdx.size(); ++j)
+        {
+            NoteState& st = state[passIdx[j]];
+            const auto& cn = chart.notes[passIdx[j]];
+            const int attack = verdicts[j].attack;
+
+            if (verdicts[j].detected)
             {
                 // The comb confirmed this note's pitch in its window (or it is
                 // a palm-muted note that was picked in it) — a hit. Timing: the
@@ -406,7 +419,6 @@ void NoteVerifier::run()
                 bool timed = false;
                 if (attack >= 0)
                 {
-                    onsetLog[(size_t) attack].claimed = true;
                     when = onsetLog[(size_t) attack].songTime;
                     timed = true;
                 }

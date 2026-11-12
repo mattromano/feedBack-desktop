@@ -52,7 +52,9 @@ test('verdicts carry `timed`, true only when a pick attack was claimed', () => {
 
 test('a palm-muted note the comb missed counts on its pick attack', () => {
     const cpp = read('src/audio/NoteVerifier.cpp');
-    assert.match(cpp, /const int attack = legato \? -1 : slopsmith::nearestUnclaimedOnset\(onsetLog, cn\.t, tol\);/);
-    assert.match(cpp, /const bool onAttack = slopsmith::palmMuteHitOnAttack\(hit, cn\.pm, legato, attack >= 0\);\s*\n\s*if \(hit \|\| onAttack\)/);
+    // The pass's decision lives in VerdictRules.h (tested in engine_units).
+    assert.match(cpp, /pn\.palmMuted = cn\.pm;/);
+    assert.match(cpp, /const auto verdicts = slopsmith::finalizePass\(passNotes, onsetLog, tol\);/);
+    assert.match(cpp, /if \(verdicts\[j\]\.detected\)/);
     assert.match(read('src/audio/addon/DeviceBindings.cpp'), /n\.pm = truthy\("pm"\);/);
 });

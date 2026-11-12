@@ -45,6 +45,51 @@ static void testPalmMuteHitOnAttack()
     assert(! palmMuteHitOnAttack(true, true, false, true));
 }
 
+static slopsmith::PassNote note(double t, bool heard, bool pm, bool legato = false)
+{
+    slopsmith::PassNote n;
+    n.t = t;
+    n.pitchHit = heard;
+    n.palmMuted = pm;
+    n.legato = legato;
+    return n;
+}
+
+static void testFinalizePassSingleNotes()
+{
+    using slopsmith::finalizePass;
+    // A heard picked note claims its attack and is timed by it.
+    {
+        std::vector<Onset> log { { 1.01, false } };
+        const auto v = finalizePass({ note(1.0, true, false) }, log, 0.1);
+        assert(v[0].detected && v[0].attack == 0 && log[0].claimed);
+    }
+    // A heard legato note has no attack: on-time, nothing claimed.
+    {
+        std::vector<Onset> log { { 1.01, false } };
+        const auto v = finalizePass({ note(1.0, true, false, true) }, log, 0.1);
+        assert(v[0].detected && v[0].attack == -1 && ! log[0].claimed);
+    }
+    // An unheard ringing note is a miss and leaves the attack for others.
+    {
+        std::vector<Onset> log { { 1.01, false } };
+        const auto v = finalizePass({ note(1.0, false, false) }, log, 0.1);
+        assert(! v[0].detected && v[0].attack == -1 && ! log[0].claimed);
+    }
+    // An unheard palm-muted note counts on its attack, and claims it.
+    {
+        std::vector<Onset> log { { 1.01, false } };
+        const auto v = finalizePass({ note(1.0, false, true) }, log, 0.1);
+        assert(v[0].detected && v[0].attack == 0 && log[0].claimed);
+    }
+    // ...but not with no attack in its window.
+    {
+        std::vector<Onset> log { { 1.5, false } };
+        const auto v = finalizePass({ note(1.0, false, true) }, log, 0.1);
+        assert(! v[0].detected && ! log[0].claimed);
+    }
+}
+
 int main()
 {
 #ifdef _MSC_VER
@@ -53,6 +98,7 @@ int main()
 #endif
     testNearestUnclaimedOnset();
     testPalmMuteHitOnAttack();
+    testFinalizePassSingleNotes();
     std::printf("verdict_rules_test: all passed\n");
     return 0;
 }
