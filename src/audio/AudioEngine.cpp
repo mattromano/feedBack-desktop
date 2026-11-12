@@ -850,6 +850,9 @@ void AudioEngine::audioDeviceAboutToStart(juce::AudioIODevice* device)
     {
         outputLatencySamples.store(device->getOutputLatencyInSamples(), std::memory_order_relaxed);
         captureActiveOutputChannels(device);
+        // The duplex callback isn't running yet: start from the current mutes
+        // so a muted output doesn't fade out (leak a block) on start.
+        duplexFanoutPrevMask = mutedOutputMask.load(std::memory_order_relaxed);
     }
     if (testLoopback)
     {
@@ -935,7 +938,9 @@ void AudioEngine::audioOutputAboutToStart(juce::AudioIODevice* device)
     outputLatencySamples.store(device->getOutputLatencyInSamples(), std::memory_order_relaxed);
     captureActiveOutputChannels(device);
     // The output callback isn't running yet for this device, so the trim state
-    // (owned by that callback) is safe to reset here.
+    // and the fan-out's previous mask (owned by that callback) are safe to
+    // reset here.
+    splitFanoutPrevMask = mutedOutputMask.load(std::memory_order_relaxed);
     outputRingTrim.prepare(device->getCurrentSampleRate());
 
     if ((int) outputPullScratchL.size() < bs) outputPullScratchL.assign((size_t) bs, 0.0f);
@@ -1204,7 +1209,8 @@ void AudioEngine::audioDeviceIOCallbackWithContext(
         // Multi-output: copy the finished stereo mix (post master gain) to
         // every further output pair, then silence muted channels.
         slopsmith::fanOutStereoMix(outputData, numOutputChannels, numSamples,
-                                   mutedOutputMask.load(std::memory_order_relaxed));
+                                   mutedOutputMask.load(std::memory_order_relaxed),
+                                   duplexFanoutPrevMask);
     }
     else
     {
@@ -1426,7 +1432,8 @@ void AudioEngine::audioOutputCallback(const float* const* /*inputData*/,
 
     // Multi-output: copy the stereo mix to every further pair, silence mutes.
     slopsmith::fanOutStereoMix(outputData, numOutputChannels, numSamples,
-                               mutedOutputMask.load(std::memory_order_relaxed));
+                               mutedOutputMask.load(std::memory_order_relaxed),
+                               splitFanoutPrevMask);
 }
 
 // -- Multi-output mute ("Play on multiple outputs") --------------------------

@@ -186,14 +186,20 @@ test('multi-output: both callbacks fan out after master gain, metering the first
     assert.match(split, /for \(int ch = 0; ch < copyChannels; \+\+ch\)\n\s+peak = /);
     // Mutes are re-resolved against the channel list whenever a device starts.
     assert.equal((src.match(/captureActiveOutputChannels\(device\);/g) || []).length, 2);
+    // Each callback keeps its own previous mask (for the mute fade), reset to
+    // the current mask before its device starts.
+    assert.match(duplex, /fanOutStereoMix\([^;]*duplexFanoutPrevMask\);/);
+    assert.match(split, /fanOutStereoMix\([^;]*splitFanoutPrevMask\);/);
+    assert.match(src, /duplexFanoutPrevMask = mutedOutputMask\.load/);
+    assert.match(src, /splitFanoutPrevMask = mutedOutputMask\.load/);
 });
 
-test('multi-output: the fan-out writes every extra channel and mutes the source pair last', () => {
-    const src = read('src/audio/engine/OutputFanout.h');
-    const body = src.slice(src.indexOf('inline void fanOutStereoMix'));
-    assert.match(body, /FloatVectorOperations::copy\(dst, outputData\[ch & 1\], numSamples\);/);
-    assert.match(body, /else\n\s+juce::FloatVectorOperations::clear\(dst, numSamples\);/);
-    assert.ok(body.indexOf('for (int ch = 2;') < body.indexOf('for (int ch = 0;'), 'pair 0 is muted after it was copied');
+test('multi-output: the fan-out has a real buffer test in engine_units', () => {
+    const cmake = read('tests/engine_units/CMakeLists.txt');
+    assert.match(cmake, /add_executable\(output_fanout_test output_fanout_test\.cpp\)/);
+    assert.match(cmake, /add_test\(NAME output_fanout COMMAND output_fanout_test\)/);
+    // JUCE-free, so the unit test builds without the engine.
+    assert.doesNotMatch(read('src/audio/engine/OutputFanout.h'), /#include <juce/);
 });
 
 test('multi-output: renderer toggle re-runs Apply and lists output pairs from the probe', () => {

@@ -513,6 +513,11 @@ private:
     // Written on control / device-start threads, read once per block on the
     // audio thread.
     std::atomic<uint64_t> mutedOutputMask{0};
+    // The mask each output callback applied last block, so a changed mute
+    // fades over one block (fanOutStereoMix). Audio-thread owned; set to the
+    // current mask in the matching about-to-start, before callbacks run.
+    uint64_t duplexFanoutPrevMask = 0;
+    uint64_t splitFanoutPrevMask = 0;
     // Control-side state behind the mask (never touched by the audio thread).
     mutable juce::CriticalSection outputMuteLock;
     juce::StringArray mutedOutputNames;   // what the user muted (persisted by main)
