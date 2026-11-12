@@ -2280,6 +2280,144 @@ window.__feedBackDesktopAudioHooks = window.__feedBackDesktopAudioHooks || {};
         else localStorage.setItem('slopsmith-default-preset-name', name);
     }
 
+    // ── Top tones (instrument menu) ──────────────────────────────────────────
+    // Starred presets first, then the most-loaded ones, as one-click buttons in
+    // the core's instrument menu. Stars: array of preset names. Counts: name → n,
+    // bumped by recordPresetUse on every load of a named preset except the
+    // startup default (which would just count app launches).
+    const PRESET_STARS_KEY = 'slopsmith-preset-stars';
+    const PRESET_USES_KEY = 'slopsmith-preset-use-counts';
+    const TOP_TONES_LIMIT = 5;
+    function readPresetStars() {
+        try {
+            const v = JSON.parse(localStorage.getItem(PRESET_STARS_KEY) || '[]');
+            return Array.isArray(v) ? v.filter((n) => typeof n === 'string' && n) : [];
+        } catch (e) { return []; }
+    }
+    function writePresetStars(names) {
+        try { localStorage.setItem(PRESET_STARS_KEY, JSON.stringify(names)); } catch (e) {
+            console.warn('[audio-engine] could not save starred presets:', e);
+        }
+    }
+    function readPresetUses() {
+        try {
+            const v = JSON.parse(localStorage.getItem(PRESET_USES_KEY) || '{}');
+            return (v && typeof v === 'object' && !Array.isArray(v)) ? v : {};
+        } catch (e) { return {}; }
+    }
+    function writePresetUses(uses) {
+        try { localStorage.setItem(PRESET_USES_KEY, JSON.stringify(uses)); } catch (e) {
+            console.warn('[audio-engine] could not save preset use counts:', e);
+        }
+    }
+    function togglePresetStar(name) {
+        const stars = readPresetStars();
+        const i = stars.indexOf(name);
+        if (i >= 0) stars.splice(i, 1); else stars.push(name);
+        writePresetStars(stars);
+        return i < 0;
+    }
+    function recordPresetUse(name) {
+        if (!name) return;
+        const uses = readPresetUses();
+        uses[name] = (Number(uses[name]) || 0) + 1;
+        writePresetUses(uses);
+    }
+    // Drop a deleted preset from stars and counts.
+    function forgetPresetStats(name) {
+        const stars = readPresetStars();
+        if (stars.includes(name)) writePresetStars(stars.filter((n) => n !== name));
+        const uses = readPresetUses();
+        if (name in uses) { delete uses[name]; writePresetUses(uses); }
+    }
+    /** Starred (in star order), then most used (ties by name), only presets that
+     *  still exist, at most `limit`. */
+    function topTonePresetNames(presets, stars, uses, limit) {
+        const exists = (n) => Object.prototype.hasOwnProperty.call(presets || {}, n);
+        const out = [];
+        for (const n of stars || []) if (exists(n) && !out.includes(n)) out.push(n);
+        const used = Object.keys(uses || {})
+            .filter((n) => exists(n) && !out.includes(n) && Number(uses[n]) > 0)
+            .sort((a, b) => (Number(uses[b]) - Number(uses[a])) || a.localeCompare(b));
+        return out.concat(used).slice(0, limit);
+    }
+    /** How much each preset is used: counted loads, plus the choices already on
+     *  record before counting existed (each song's whole-song tone lock, and each
+     *  Tone Automation slot that targets it), so Top tones isn't empty on day one. */
+    function presetUseScores(uses, songLocks, taTargets) {
+        const out = {};
+        const add = (n, k) => { if (typeof n === 'string' && n) out[n] = (out[n] || 0) + k; };
+        for (const [n, c] of Object.entries(uses || {})) add(n, Number(c) || 0);
+        for (const n of Object.values(songLocks || {})) add(n, 1);
+        // The 'bass' slot is the tone for bass arrangements, not a guitar tone.
+        for (const [slot, n] of Object.entries(taTargets || {})) if (slot !== 'bass') add(n, 1);
+        return out;
+    }
+    // The one manual "load this preset now" path (Settings → Load and the
+    // instrument menu's top tones). Snapshots the chain so a failed load rolls back.
+    // Runs under the tone chain lock so it can't interleave with a song's chain
+    // rebuild, and refuses while a song is loading (that rebuild would replace it).
+    async function loadPresetManually(name, source) {
+        const p = getPresets()[name];
+        if (!p) return false;
+        if (isSongTransitioning()) {
+            console.warn('[audio-engine] Not loading preset during a song load:', name);
+            return false;
+        }
+        const ok = await withToneChainLock(() => replaceChainWithPresetBlob(p, `${source}:${name}`));
+        if (ok) {
+            recordPresetUse(name);
+            console.log('[audio-engine] Preset loaded:', name);
+        }
+        return ok;
+    }
+    let _instMenuLoading = null;
+    function renderInstMenuTopTones(slot, ctx) {
+        const presets = getPresets();
+        if (!Object.keys(presets).length) { slot.innerHTML = ''; return; }
+        const scores = presetUseScores(readPresetUses(), readSongToneLocks(), (readTaStore() || {}).targets);
+        const names = topTonePresetNames(presets, readPresetStars(), scores, TOP_TONES_LIMIT);
+        const stars = readPresetStars();
+        const head = '<div class="text-[0.625rem] uppercase tracking-wider text-fb-textDim mb-1">Top tones</div>';
+        if (!names.length) {
+            slot.innerHTML = '<div class="pt-3 border-t border-fb-border/40">' + head +
+                '<div class="text-[0.6875rem] text-fb-textDim">Star tones in Audio Engine settings to pin them here.</div></div>';
+            return;
+        }
+        slot.innerHTML = '<div class="pt-3 border-t border-fb-border/40">' + head + '<div class="flex flex-wrap gap-1">' +
+            names.map((n) => {
+                const busy = n === _instMenuLoading;
+                return '<button type="button" data-top-tone="' + escHtml(n) + '" title="Load ' + escHtml(n) + '" ' +
+                    'class="px-2 py-1 rounded-md text-xs ' + (busy ? 'bg-fb-primary text-white' : 'bg-gray-800/50 text-fb-textDim hover:text-fb-text') + '"' +
+                    (_instMenuLoading ? ' disabled' : '') + '>' +
+                    (stars.includes(n) ? '&#9733; ' : '') + escHtml(busy ? n + '…' : n) + '</button>';
+            }).join('') + '</div></div>';
+        slot.querySelectorAll('[data-top-tone]').forEach((b) => b.addEventListener('click', async () => {
+            const name = b.getAttribute('data-top-tone');
+            if (_instMenuLoading) return;
+            _instMenuLoading = name;
+            ctx.refresh();
+            try {
+                if (!(await loadPresetManually(name, 'inst-menu'))) console.warn('[audio-engine] top tone did not load:', name);
+            } finally {
+                _instMenuLoading = null;
+                ctx.refresh();
+            }
+        }));
+    }
+    // Core's v3 instrument menu (static/v3/badges.js) takes extra sections via
+    // v3Badges.registerMenuSection; queue the section if it hasn't loaded yet.
+    // Older cores without the hook just don't show top tones.
+    (function registerTopTones() {
+        const section = { id: 'audio-engine-top-tones', render: renderInstMenuTopTones, order: 20 };
+        if (window.v3Badges && typeof window.v3Badges.registerMenuSection === 'function') {
+            window.v3Badges.registerMenuSection(section.id, section.render, section);
+        } else {
+            window._v3BadgesPendingSections = window._v3BadgesPendingSections || [];
+            window._v3BadgesPendingSections.push(section);
+        }
+    })();
+
     /** Older saved presets may omit `items`; iterating undefined throws and can crash the embedded UI. */
     function getPresetItems(preset) {
         const items = preset?.items;
@@ -2637,7 +2775,9 @@ window.__feedBackDesktopAudioHooks = window.__feedBackDesktopAudioHooks || {};
             const div = document.createElement('div');
             div.className = 'flex items-center gap-2 p-2 rounded bg-slate-800/50 text-sm';
             const eName = escHtml(name);
+            const starred = readPresetStars().includes(name);
             div.innerHTML = `
+                <button class="text-sm leading-none ${starred ? 'text-amber-400' : 'text-slate-500 hover:text-fb-text'}" data-preset="${eName}" data-action="star" title="${starred ? 'Unstar (remove from Top tones)' : 'Star (show in Top tones)'}">${starred ? '&#9733;' : '&#9734;'}</button>
                 <span class="flex-1 text-slate-300">${eName}${name === defaultPresetName ? ' <span class="text-xs text-slate-500">(default)</span>' : ''}</span>
                 <span class="text-xs text-slate-500">${getPresetItems(presets[name]).length} processors</span>
                 <button class="text-xs px-2 py-1 rounded ${name === defaultPresetName ? 'bg-blue-700/60 text-slate-300 cursor-not-allowed' : 'bg-blue-600/50 hover:bg-blue-500'}" data-preset="${eName}" data-action="default" ${name === defaultPresetName ? 'disabled' : ''}>Default</button>
@@ -2648,12 +2788,12 @@ window.__feedBackDesktopAudioHooks = window.__feedBackDesktopAudioHooks || {};
                 setDefaultPresetName(name);
                 renderPresetList();
             });
+            div.querySelector('[data-action="star"]').addEventListener('click', () => {
+                togglePresetStar(name);
+                renderPresetList();
+            });
             div.querySelector('[data-action="load"]').addEventListener('click', async () => {
-                const p = getPresets()[name];
-                if (!p) return;
-                if (await replaceChainWithPresetBlob(p, `settings-load:${name}`)) {
-                    console.log('[audio-engine] Preset loaded:', name);
-                }
+                await loadPresetManually(name, 'settings-load');
             });
             div.querySelector('[data-action="delete"]').addEventListener('click', () => {
                 const ps = getPresets();
@@ -2672,6 +2812,7 @@ window.__feedBackDesktopAudioHooks = window.__feedBackDesktopAudioHooks || {};
                     if (presetRef === name) { delete taCfg.targets[cat]; taDirty = true; }
                 }
                 if (taDirty) writeTaStore(taCfg);
+                forgetPresetStats(name);
                 renderPresetList();
                 renderToneAutomationTargets();
             });
@@ -4248,6 +4389,7 @@ window.__feedBackDesktopAudioHooks = window.__feedBackDesktopAudioHooks || {};
         if (!preset?.nativePreset) return false;
         const ok = await replaceChainWithPresetBlob(preset, `tone-automation:${presetName}`, { snapshot: false });
         if (!ok) console.error('[tone-automation] Failed to load preset:', presetName);
+        else recordPresetUse(presetName);
         return ok;
     }
 
