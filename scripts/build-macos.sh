@@ -161,6 +161,42 @@ get_expected_artifacts() {
     printf "%s\n" "$PROJECT_DIR/release/mac*/*.app"
 }
 
+# Copy each bundled binary's Homebrew dylibs next to it and rewrite its load
+# commands to @executable_path/ (see the call site for why).
+#
+# Homebrew's fluidsynth links its own library as @rpath/libfluidsynth.3.dylib.
+# dylibbundler can't resolve @rpath without a search path, so it asks for a
+# directory on stdin. With no terminal in CI it read EOF forever and the Mac
+# job spun on "does not exist. Try again" until it timed out (v0.4.17, v0.4.18).
+# So: give it Homebrew's lib dirs, and answer any further prompt with "quit"
+# so an unresolvable library fails the build at once.
+bundle_brew_dylibs() {
+    local bin_dir="$1"
+    command -v dylibbundler &>/dev/null || return 0
+    local brew_prefix search=()
+    brew_prefix="$(brew --prefix 2>/dev/null || echo /opt/homebrew)"
+    search+=(-s "$brew_prefix/lib")
+    local formula
+    for formula in fluid-synth; do
+        local keg
+        keg="$(brew --prefix "$formula" 2>/dev/null || true)"
+        [[ -n "$keg" && -d "$keg/lib" ]] && search+=(-s "$keg/lib")
+    done
+    local bin
+    for bin in fluidsynth ffmpeg ffprobe vgmstream-cli; do
+        local target="$bin_dir/$bin"
+        [[ -f "$target" ]] || continue
+        echo -e "${BLUE}Bundling ${bin} dependencies...${NC}"
+        if ! dylibbundler -cd -b -of -x "$target" \
+                -d "$bin_dir" \
+                -p '@executable_path/' \
+                "${search[@]}" <<<"quit"; then
+            echo "Error: dylibbundler couldn't find every library $bin needs (searched: ${search[*]})." >&2
+            exit 1
+        fi
+    done
+}
+
 # Platform-specific: Bundle system binaries
 bundle_binaries_impl() {
     # macOS: copy existing binaries and bundle dependencies
@@ -354,16 +390,7 @@ bundle_binaries_impl() {
     # against its own brew deps. dylibbundler is idempotent and skips
     # paths it has already rewritten, so the per-binary loop is safe
     # even when binaries share dylibs.
-    if command -v dylibbundler &>/dev/null; then
-        for bin in fluidsynth ffmpeg ffprobe vgmstream-cli; do
-            local target="$PROJECT_DIR/resources/bin/$bin"
-            [[ -f "$target" ]] || continue
-            echo -e "${BLUE}Bundling ${bin} dependencies...${NC}"
-            dylibbundler -cd -b -of -x "$target" \
-                -d "$PROJECT_DIR/resources/bin" \
-                -p '@executable_path/'
-        done
-    fi
+    bundle_brew_dylibs "$PROJECT_DIR/resources/bin"
 
     # Sign all bundled native binaries with the Developer ID Application
     # cert before verify_bundled_binaries runs them. Signing also clears
