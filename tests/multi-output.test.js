@@ -276,7 +276,11 @@ test('multi-output: the fan-out has a real buffer test in engine_units', () => {
 test('multi-output: renderer toggle re-runs Apply and lists output pairs from the probe', () => {
     const src = read('src/renderer/screen.js');
     assert.match(src, /applyDeviceBtn\.addEventListener\('click', \(\) => applyDeviceForm\(\)\);/);
-    assert.match(src, /multiOutputCheckbox\?\.addEventListener\('change', async \(\) => \{[\s\S]*?await api\.setMultiOutput\(enabled\)[\s\S]*?await applyDeviceForm\(\);/);
+    // The toggle skips the reopen when the save failed, and keeps audio
+    // stopped if the user had stopped it.
+    assert.match(src, /multiOutputCheckbox\?\.addEventListener\('change', async \(\) => \{[\s\S]*?await api\.setMultiOutput\(enabled\)[\s\S]*?if \(enabled === previous\) return;[\s\S]*?await applyDeviceForm\(\{ startAudio: audioRunning \}\);/);
+    assert.match(src, /async function applyDeviceForm\(\{ startAudio = true \} = \{\}\)/);
+    assert.match(src, /result\?\.multiOutputFallback/);
     assert.match(src, /renderOutputPairs\(options\?\.outputChannels\);/);
     // Mute clicks update the state before the await and save in order, for
     // the device in the form.

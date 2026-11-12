@@ -1838,7 +1838,9 @@ window.__feedBackDesktopAudioHooks = window.__feedBackDesktopAudioHooks || {};
 
         applyDeviceBtn.addEventListener('click', () => applyDeviceForm());
 
-        async function applyDeviceForm() {
+        // startAudio:false configures the device but leaves audio stopped (a
+        // settings change made while the user had stopped audio).
+        async function applyDeviceForm({ startAudio = true } = {}) {
             statusText.textContent = 'Configuring device...';
             if (audioRunning) {
                 await api.stopAudio();
@@ -1867,13 +1869,22 @@ window.__feedBackDesktopAudioHooks = window.__feedBackDesktopAudioHooks || {};
                 if (Number.isFinite(inputChannel)) await api.setInputChannel(inputChannel);
                 await api.setMonitorMute(monitorMuteCheckbox.checked);
                 await api.setMonitorKill?.(monitorKillCheckbox.checked);
-                await api.startAudio();
-                audioRunning = true;
-                toggleBtn.textContent = 'Stop';
-                statusDot.className = 'w-3 h-3 rounded-full bg-emerald-500';
                 const modeLabel = (typeof result === 'object' && result?.duplex === false)
                     ? ' (split mode)' : '';
-                statusText.textContent = 'Audio running' + modeLabel;
+                // Main fell back to the first output pair: the device can't
+                // open every output with these settings.
+                const fallbackNote = (typeof result === 'object' && result?.multiOutputFallback)
+                    ? ' (couldn\'t open every output; playing on the first pair only)' : '';
+                if (startAudio) {
+                    await api.startAudio();
+                    audioRunning = true;
+                    toggleBtn.textContent = 'Stop';
+                    statusDot.className = 'w-3 h-3 rounded-full bg-emerald-500';
+                    statusText.textContent = 'Audio running' + modeLabel + fallbackNote;
+                } else {
+                    statusDot.className = 'w-3 h-3 rounded-full bg-yellow-500';
+                    statusText.textContent = 'Device configured; audio stopped' + modeLabel + fallbackNote;
+                }
                 aeApplyNoiseGateToEngine();
                 aeApplyTonePolishToEngine();
                 syncSelectedInputSource(inputType, inputDeviceSelect.value);
@@ -1890,20 +1901,22 @@ window.__feedBackDesktopAudioHooks = window.__feedBackDesktopAudioHooks || {};
         // Play on multiple outputs: persist, then reopen the device through the
         // normal Apply flow so the engine opens the new output channel mask.
         multiOutputCheckbox?.addEventListener('change', async () => {
+            const previous = multiOutputState.enabled === true;
             let enabled = multiOutputCheckbox.checked;
             try {
                 enabled = (await api.setMultiOutput(enabled)) === true;
             } catch (e) {
                 console.warn('[audio-engine] setMultiOutput failed:', e);
-                enabled = multiOutputState.enabled;
+                enabled = previous;
             }
             multiOutputState.enabled = enabled;
             renderOutputPairs();
+            if (enabled === previous) return; // not saved: nothing to reopen
             if (!isDeviceFormApplied()) {
                 statusText.textContent = 'Apply device settings to use this output setting';
                 return;
             }
-            await applyDeviceForm();
+            await applyDeviceForm({ startAudio: audioRunning });
         });
         loadMultiOutputState();
 
