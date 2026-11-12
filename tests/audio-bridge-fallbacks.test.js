@@ -117,7 +117,7 @@ test('audio-bridge handler fallbacks match the snapshot', async () => {
         fs.writeFileSync(SNAPSHOT, JSON.stringify(actual, null, 2) + '\n');
     }
     const expected = JSON.parse(fs.readFileSync(SNAPSHOT, 'utf8'));
-    assert.equal(Object.keys(actual.missing).length, 111, 'handler count changed');
+    assert.equal(Object.keys(actual.missing).length, 114, 'handler count changed');
     for (const mode of Object.keys(expected)) {
         for (const channel of Object.keys(expected[mode])) {
             assert.deepEqual(actual[mode][channel], expected[mode][channel], `${mode} ${channel}`);

@@ -10,6 +10,7 @@
 #include "engine/DeviceSetup.h"
 #include "engine/SourcePool.h"
 #include "engine/ExtraInputs.h"
+#include "engine/OutputFanout.h"
 #include "BackingLeveler.h"
 #include "signalsmith-stretch.h"
 #include <juce_audio_devices/juce_audio_devices.h>
@@ -267,6 +268,15 @@ public:
     void setStreamBus(bool includeBacking, bool includeGuitar, float gain) { streamSink.setBus(includeBacking, includeGuitar, gain); }
     void setStreamBusGain(float gain) { streamSink.setBusGain(gain); }
 
+    // Multi-output mute ("Play on multiple outputs"). `names` are output
+    // channel names as the device advertises them (probeDeviceOptions
+    // outputChannels); keyed by name, not index, because ASIO4ALL reorders
+    // channels when devices are ticked in its panel. Applies live (no device
+    // reopen) and is re-resolved against the new channel list on every
+    // device start. Returns how many of the names match an open channel.
+    int setMutedOutputChannels(const juce::StringArray& names);
+    juce::StringArray getMutedOutputChannels() const;
+
     // ── Renderer-audio bus (Phase 2: WebAudio master → engine output) ─────────
     // The renderer pushes its WebAudio master mix here (via IPC) so song/stem
     // audio stays audible when the output device is exclusive-style and the OS
@@ -497,6 +507,18 @@ private:
     // the track level independently of the post-mix master volume.
     std::atomic<float> currentBackingLevel{0.0f};
     std::atomic<float> outputPeak{0.0f};
+
+    // Multi-output mute: bit c = output channel c (of the open output device's
+    // ACTIVE channels, callback order) is silenced by fanOutStereoMix().
+    // Written on control / device-start threads, read once per block on the
+    // audio thread.
+    std::atomic<uint64_t> mutedOutputMask{0};
+    // Control-side state behind the mask (never touched by the audio thread).
+    mutable juce::CriticalSection outputMuteLock;
+    juce::StringArray mutedOutputNames;   // what the user muted (persisted by main)
+    juce::StringArray activeOutputNames;  // active output channels of the open device, in callback order
+    int recomputeMutedOutputMaskLocked();
+    void captureActiveOutputChannels(juce::AudioIODevice* device);
 
     // Backing track — transport/stretch/leveler moved to engine/BackingPlayer
     // (TLC phase 3). Declared after `state` (bound by reference).

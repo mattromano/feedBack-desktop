@@ -245,6 +245,14 @@ const feedBackDesktopApi = {
                 (input: string, output: string, sampleRate: number, bufferSize: number): Promise<DeviceConfigResult>;
             },
         getDeviceMetrics: () => ipcRenderer.invoke('audio:getDeviceMetrics'),
+        // "Play on multiple outputs": the switch reopens the device (call
+        // setDevice again after it); mutes are output channel names, live.
+        getMultiOutput: (): Promise<{ enabled: boolean; mutedOutputChannels: string[] }> =>
+            ipcRenderer.invoke('audio:getMultiOutput'),
+        setMultiOutput: (enabled: boolean): Promise<boolean> =>
+            ipcRenderer.invoke('audio:setMultiOutput', enabled),
+        setMutedOutputChannels: (names: string[]): Promise<string[]> =>
+            ipcRenderer.invoke('audio:setMutedOutputChannels', names),
         loadDeviceSettings: () => ipcRenderer.invoke('audio:loadDeviceSettings'),
         saveDeviceSettings: (settings: unknown) => ipcRenderer.invoke('audio:saveDeviceSettings', settings),
 

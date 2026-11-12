@@ -531,7 +531,7 @@ AudioEngine::DeviceConfigResult AudioEngine::setAudioDevices(const DeviceConfig&
 
         const juce::String err = deviceSetup.applyDuplex(resolvedInput, resolvedOutput,
                                                           requestedSampleRate, requestedBufferSize,
-                                                          source0());
+                                                          source0(), config.multiOutput);
         if (err.isEmpty())
         {
             duplexMode.store(true, std::memory_order_relaxed);
@@ -847,7 +847,10 @@ void AudioEngine::audioDeviceAboutToStart(juce::AudioIODevice* device)
     // Duplex: this device is the output too - its output latency places the
     // heard clock. Split mode records the output device's in audioOutputAboutToStart.
     if (duplexMode.load(std::memory_order_relaxed))
+    {
         outputLatencySamples.store(device->getOutputLatencyInSamples(), std::memory_order_relaxed);
+        captureActiveOutputChannels(device);
+    }
     if (testLoopback)
     {
         loopDelay = device->getOutputLatencyInSamples() + device->getInputLatencyInSamples();
@@ -930,6 +933,7 @@ void AudioEngine::audioOutputAboutToStart(juce::AudioIODevice* device)
             device->getName().toRawUTF8(), device->getCurrentSampleRate(), bs);
     outputBlockSize.store(bs, std::memory_order_relaxed);
     outputLatencySamples.store(device->getOutputLatencyInSamples(), std::memory_order_relaxed);
+    captureActiveOutputChannels(device);
     // The output callback isn't running yet for this device, so the trim state
     // (owned by that callback) is safe to reset here.
     outputRingTrim.prepare(device->getCurrentSampleRate());
@@ -1046,9 +1050,13 @@ void AudioEngine::audioDeviceIOCallbackWithContext(
     // Duplex writes outputData directly. Split runs DSP into a private 2-channel
     // scratch and pushes the result to outputRing for OutputCallback.
     juce::AudioBuffer<float> buffer;
+    // Duplex mixes into the first output pair only. With "Play on multiple
+    // outputs" the device has more channels; fanOutStereoMix() copies the
+    // finished pair onto them at the end of the block.
+    const int mixOutputChannels = duplex ? juce::jmin(numOutputChannels, 2) : 2;
     if (duplex)
     {
-        buffer.setDataToReferTo(outputData, numOutputChannels, numSamples);
+        buffer.setDataToReferTo(outputData, mixOutputChannels, numSamples);
     }
     else
     {
@@ -1065,7 +1073,7 @@ void AudioEngine::audioDeviceIOCallbackWithContext(
         buffer.setDataToReferTo(outputBackingBuffer.getArrayOfWritePointers(), 2, numSamples);
     }
 
-    const int effectiveOutputChannels = duplex ? numOutputChannels : 2;
+    const int effectiveOutputChannels = mixOutputChannels;
 
     // Per-source capture + detect + monitor.
     //
@@ -1126,7 +1134,7 @@ void AudioEngine::audioDeviceIOCallbackWithContext(
             publishBackingStamp(outSamples);
             const float bVol = backingVolume.load();
             streamBackingFrames = outSamples; streamBackingVol = bVol; streamBackingOn = true;
-            const int mixChannels = juce::jmin(numOutputChannels, 2);
+            const int mixChannels = mixOutputChannels;
             float backingLevelSq = 0.0f;
             for (int ch = 0; ch < mixChannels; ++ch)
             {
@@ -1167,15 +1175,15 @@ void AudioEngine::audioDeviceIOCallbackWithContext(
 
         // Renderer bus into the device output — like backing, before master gain.
         if (rendererFrames > 0)
-            for (int ch = 0; ch < juce::jmin(numOutputChannels, 2); ++ch)
+            for (int ch = 0; ch < mixOutputChannels; ++ch)
                 buffer.addFrom(ch, 0, rendererBusPullScratch, ch, 0, rendererFrames);
 
         // Apply output gain
         buffer.applyGain(outputGain.load());
 
-        // Output metering
+        // Output metering: the first pair (the mix), before fan-out / mute.
         float peak = 0.0f;
-        for (int ch = 0; ch < numOutputChannels; ++ch)
+        for (int ch = 0; ch < mixOutputChannels; ++ch)
             peak = juce::jmax(peak, buffer.getMagnitude(ch, 0, numSamples));
         currentOutputLevel.store(peak);
         float prevPeak = outputPeak.load();
@@ -1183,7 +1191,7 @@ void AudioEngine::audioDeviceIOCallbackWithContext(
 
         if (loopNow)
         {
-            const int nOut = juce::jmin(numOutputChannels, 2);
+            const int nOut = mixOutputChannels;
             for (int j = 0; j < numSamples; ++j)
             {
                 float m = 0.0f;
@@ -1192,6 +1200,11 @@ void AudioEngine::audioDeviceIOCallbackWithContext(
             }
             loopWrite += (uint64_t) numSamples;
         }
+
+        // Multi-output: copy the finished stereo mix (post master gain) to
+        // every further output pair, then silence muted channels.
+        slopsmith::fanOutStereoMix(outputData, numOutputChannels, numSamples,
+                                   mutedOutputMask.load(std::memory_order_relaxed));
     }
     else
     {
@@ -1403,12 +1416,67 @@ void AudioEngine::audioOutputCallback(const float* const* /*inputData*/,
 
     buffer.applyGain(outputGain.load());
 
+    // Metering reads the first pair (the mix), before fan-out / mute.
     float peak = 0.0f;
-    for (int ch = 0; ch < numOutputChannels; ++ch)
+    for (int ch = 0; ch < copyChannels; ++ch)
         peak = juce::jmax(peak, buffer.getMagnitude(ch, 0, numSamples));
     currentOutputLevel.store(peak);
     float prevPeak = outputPeak.load();
     if (peak > prevPeak) outputPeak.store(peak);
+
+    // Multi-output: copy the stereo mix to every further pair, silence mutes.
+    slopsmith::fanOutStereoMix(outputData, numOutputChannels, numSamples,
+                               mutedOutputMask.load(std::memory_order_relaxed));
+}
+
+// -- Multi-output mute ("Play on multiple outputs") --------------------------
+
+int AudioEngine::recomputeMutedOutputMaskLocked()
+{
+    uint64_t mask = 0;
+    int matched = 0;
+    const int n = juce::jmin(activeOutputNames.size(), 64);
+    for (int c = 0; c < n; ++c)
+    {
+        if (mutedOutputNames.contains(activeOutputNames[c]))
+        {
+            mask |= (uint64_t) 1 << c;
+            ++matched;
+        }
+    }
+    mutedOutputMask.store(mask, std::memory_order_relaxed);
+    return matched;
+}
+
+void AudioEngine::captureActiveOutputChannels(juce::AudioIODevice* device)
+{
+    juce::StringArray active;
+    if (device != nullptr)
+    {
+        // The callback's outputData holds only the ACTIVE channels, in
+        // ascending channel order: map each to its advertised name.
+        const auto names = device->getOutputChannelNames();
+        const auto bits = device->getActiveOutputChannels();
+        for (int ch = 0; ch < names.size(); ++ch)
+            if (bits[ch])
+                active.add(names[ch]);
+    }
+    const juce::ScopedLock sl(outputMuteLock);
+    activeOutputNames = active;
+    recomputeMutedOutputMaskLocked();
+}
+
+int AudioEngine::setMutedOutputChannels(const juce::StringArray& names)
+{
+    const juce::ScopedLock sl(outputMuteLock);
+    mutedOutputNames = names;
+    return recomputeMutedOutputMaskLocked();
+}
+
+juce::StringArray AudioEngine::getMutedOutputChannels() const
+{
+    const juce::ScopedLock sl(outputMuteLock);
+    return mutedOutputNames;
 }
 
 // ── Renderer-audio bus (Phase 2: WebAudio master → engine output) ────────────

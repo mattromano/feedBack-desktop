@@ -92,6 +92,18 @@
                     <option value="1024">1024 samples (~21.3ms)</option>
                 </select>
             </div>
+            <div class="md:col-span-2">
+                <label class="flex items-center gap-2 cursor-pointer">
+                    <input type="checkbox" id="ae-multi-output"
+                           class="w-4 h-4 rounded bg-slate-700 border-slate-600 accent-emerald-500">
+                    <span class="text-sm text-slate-300">Play on multiple outputs</span>
+                    <span class="text-xs text-slate-500">(plays the mix on every output of this device, e.g. ASIO4ALL with your headset and speakers both ticked in its panel; untick an output below to mute it)</span>
+                </label>
+                <div id="ae-output-pairs" class="hidden mt-2 ml-6 space-y-1"></div>
+                <p id="ae-multi-output-note" class="hidden mt-1 ml-6 text-xs text-amber-300/80">
+                    Two separate sound cards run on separate clocks. ASIO4ALL can crackle when it drives both; if it does, raise the buffer size.
+                </p>
+            </div>
         </div>
         <button id="ae-apply-device" class="mt-3 px-4 py-2 rounded bg-blue-600 hover:bg-blue-500 text-sm font-medium">
             Apply Device Settings

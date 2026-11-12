@@ -9,6 +9,7 @@ import { app } from 'electron';
 import { isDebugEnabled, getDebugLogPath } from './debug-log';
 import { initVstCrashGuard, armSentinel, disarmSentinel, armEditorSentinel, getSentinelPath } from './vst-crash-guard';
 import { createAudioEffectsExecutor } from './audio-effects-executor';
+import { getDesktopConfig, setDesktopConfig } from './desktop-config';
 
 type AudioModule = Record<string, (...args: any[]) => any>;
 
@@ -152,6 +153,7 @@ type DeviceConfigPayload = {
     outputDevice: string;
     sampleRate: number;
     bufferSize: number;
+    multiOutput: boolean;
 };
 
 function normalizeDeviceConfigPayload(payload: unknown): DeviceConfigPayload {
@@ -166,7 +168,37 @@ function normalizeDeviceConfigPayload(payload: unknown): DeviceConfigPayload {
         outputDevice: String(record.outputDevice ?? record.output ?? ''),
         sampleRate: Number.isFinite(sampleRate) && sampleRate > 0 ? sampleRate : 48000,
         bufferSize: Number.isFinite(bufferSize) && bufferSize > 0 ? bufferSize : 256,
+        multiOutput: record.multiOutput === true,
     };
+}
+
+// ── "Play on multiple outputs" ──────────────────────────────────────────────
+// The setting lives in desktop-config (main owns it, not the renderer's
+// device settings), so every setDevice caller gets it without passing it.
+
+function multiOutputEnabled(): boolean {
+    return getDesktopConfig().multiOutput === true;
+}
+
+function sanitizeOutputChannelNames(value: unknown): string[] {
+    if (!Array.isArray(value)) return [];
+    const out: string[] = [];
+    for (const v of value) {
+        if (typeof v !== 'string') continue;
+        const name = v.trim();
+        if (name && name.length <= 256 && !out.includes(name)) out.push(name);
+        if (out.length >= 64) break;
+    }
+    return out;
+}
+
+// Push the saved mutes to the engine. With multiOutput off nothing is muted:
+// the device then only has its first pair open, and a stale mute on it would
+// silence the app.
+function pushOutputMutes(): void {
+    const cfg = getDesktopConfig();
+    const muted = cfg.multiOutput === true ? sanitizeOutputChannelNames(cfg.mutedOutputChannels) : [];
+    callAddon('setMutedOutputChannels', -1, muted);
 }
 
 function normalizeDeviceConfigResult(result: unknown, fallbackError = '') {
@@ -292,6 +324,11 @@ export function initAudioBridge(): void {
             audio = null;
         }
     }
+
+    // Saved multi-output mutes: the engine re-resolves them against the
+    // channel list every time a device starts, so pushing once here covers
+    // every later setDevice.
+    if (audio) pushOutputMutes();
 
     // VST crash guard: promote any leftover crash sentinel into the blocklist,
     // then hand the blocklist to the addon so it sandboxes those plugins.
@@ -544,6 +581,7 @@ export function initAudioBridge(): void {
                 if (Number.isFinite(sr) && sr > 0) payload.sampleRate = sr;
                 if (Number.isFinite(bs) && bs > 0) payload.bufferSize = bs;
                 const normalizedPayload = normalizeDeviceConfigPayload(payload);
+                normalizedPayload.multiOutput = multiOutputEnabled();
                 try {
                     return normalizeDeviceConfigResult(audio.setDevice(normalizedPayload));
                 } catch (e: unknown) {
@@ -551,6 +589,9 @@ export function initAudioBridge(): void {
                     console.warn(`[audio] setDevice object call threw: ${objectError}; retrying legacy device call`);
                     if (normalizedPayload.inputType !== normalizedPayload.outputType) {
                         return normalizeDeviceConfigResult(false, objectError);
+                    }
+                    if (normalizedPayload.multiOutput) {
+                        console.warn('[audio] legacy setDevice fallback cannot carry "Play on multiple outputs"; opening the first output pair only');
                     }
                     try {
                         return normalizeDeviceConfigResult(
@@ -576,6 +617,42 @@ export function initAudioBridge(): void {
             console.warn(`[audio] setDevice threw: ${error}`);
             return { ok: false, error, duplex: true };
         }
+    });
+
+    // "Play on multiple outputs" (desktop-config). get → current setting;
+    // setMultiOutput persists the switch (the renderer then re-applies the
+    // device so the new channel mask opens); setMutedOutputChannels persists
+    // and applies the per-output mutes live, without reopening.
+    ipcMain.handle('audio:getMultiOutput', () => {
+        const cfg = getDesktopConfig();
+        return {
+            enabled: cfg.multiOutput === true,
+            mutedOutputChannels: sanitizeOutputChannelNames(cfg.mutedOutputChannels),
+        };
+    });
+
+    ipcMain.handle('audio:setMultiOutput', (_event, enabled: unknown) => {
+        if (typeof enabled !== 'boolean') return multiOutputEnabled();
+        try {
+            setDesktopConfig({ multiOutput: enabled });
+        } catch (e: unknown) {
+            console.warn(`[audio] saving multiOutput failed: ${e instanceof Error ? e.message : String(e)}`);
+            return multiOutputEnabled();
+        }
+        pushOutputMutes();
+        return enabled;
+    });
+
+    ipcMain.handle('audio:setMutedOutputChannels', (_event, names: unknown) => {
+        if (!Array.isArray(names)) return sanitizeOutputChannelNames(getDesktopConfig().mutedOutputChannels);
+        const muted = sanitizeOutputChannelNames(names);
+        try {
+            setDesktopConfig({ mutedOutputChannels: muted });
+        } catch (e: unknown) {
+            console.warn(`[audio] saving mutedOutputChannels failed: ${e instanceof Error ? e.message : String(e)}`);
+        }
+        pushOutputMutes();
+        return sanitizeOutputChannelNames(getDesktopConfig().mutedOutputChannels);
     });
 
     ipcMain.handle('audio:getDeviceMetrics', () => {
